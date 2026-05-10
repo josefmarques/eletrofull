@@ -1,0 +1,581 @@
+.
+├── backend
+│   ├── docker-compose.yaml-bkp
+│   ├── Dockerfile
+│   ├── drizzle
+│   │   ├── 0000_tranquil_maverick.sql
+│   │   ├── 0001_romantic_whizzer.sql
+│   │   ├── 0002_easy_living_lightning.sql
+│   │   └── meta
+│   ├── drizzle.config.ts
+│   ├── node_modules
+│   │   ├── accepts
+│   │   ├── append-field
+│   │   ├── bcrypt
+│   │   ├── body-parser
+│   │   ├── buffer-from
+│   │   ├── busboy
+│   │   ├── bytes
+│   │   ├── call-bind-apply-helpers
+│   │   ├── call-bound
+│   │   ├── concat-stream
+│   │   ├── content-disposition
+│   │   ├── content-type
+│   │   ├── cookie
+│   │   ├── cookie-signature
+│   │   ├── cors
+│   │   ├── crypto
+│   │   ├── debug
+│   │   ├── depd
+│   │   ├── detect-libc
+│   │   ├── dotenv
+│   │   ├── drizzle-kit
+│   │   ├── drizzle-orm
+│   │   ├── @drizzle-team
+│   │   ├── dunder-proto
+│   │   ├── ee-first
+│   │   ├── encodeurl
+│   │   ├── @esbuild
+│   │   ├── esbuild
+│   │   ├── @esbuild-kit
+│   │   ├── esbuild-register
+│   │   ├── escape-html
+│   │   ├── es-define-property
+│   │   ├── es-errors
+│   │   ├── es-object-atoms
+│   │   ├── etag
+│   │   ├── express
+│   │   ├── finalhandler
+│   │   ├── forwarded
+│   │   ├── fresh
+│   │   ├── function-bind
+│   │   ├── get-intrinsic
+│   │   ├── get-proto
+│   │   ├── get-tsconfig
+│   │   ├── gopd
+│   │   ├── hasown
+│   │   ├── has-symbols
+│   │   ├── http-errors
+│   │   ├── iconv-lite
+│   │   ├── @img
+│   │   ├── inherits
+│   │   ├── ipaddr.js
+│   │   ├── is-promise
+│   │   ├── math-intrinsics
+│   │   ├── media-typer
+│   │   ├── merge-descriptors
+│   │   ├── mime-db
+│   │   ├── mime-types
+│   │   ├── minimist
+│   │   ├── mkdirp
+│   │   ├── ms
+│   │   ├── multer
+│   │   ├── negotiator
+│   │   ├── node-addon-api
+│   │   ├── node-gyp-build
+│   │   ├── object-assign
+│   │   ├── object-inspect
+│   │   ├── once
+│   │   ├── on-finished
+│   │   ├── parseurl
+│   │   ├── path-to-regexp
+│   │   ├── postgres
+│   │   ├── proxy-addr
+│   │   ├── qs
+│   │   ├── range-parser
+│   │   ├── raw-body
+│   │   ├── readable-stream
+│   │   ├── resolve-pkg-maps
+│   │   ├── router
+│   │   ├── safe-buffer
+│   │   ├── safer-buffer
+│   │   ├── semver
+│   │   ├── send
+│   │   ├── serve-static
+│   │   ├── setprototypeof
+│   │   ├── sharp
+│   │   ├── side-channel
+│   │   ├── side-channel-list
+│   │   ├── side-channel-map
+│   │   ├── side-channel-weakmap
+│   │   ├── source-map
+│   │   ├── source-map-support
+│   │   ├── statuses
+│   │   ├── streamsearch
+│   │   ├── string_decoder
+│   │   ├── toidentifier
+│   │   ├── tsx
+│   │   ├── typedarray
+│   │   ├── type-is
+│   │   ├── @types
+│   │   ├── typescript
+│   │   ├── undici-types
+│   │   ├── unpipe
+│   │   ├── util-deprecate
+│   │   ├── vary
+│   │   ├── wrappy
+│   │   ├── xtend
+│   │   └── zod
+│   ├── package.json
+│   ├── package-lock.json
+│   ├── public
+│   │   └── avatars
+│   ├── README.md
+│   ├── src
+│   │   ├── controllers
+│   │   ├── db
+│   │   ├── middlewares
+│   │   ├── routes
+│   │   ├── server.ts
+│   │   ├── services
+│   │   ├── types
+│   │   ├── utils
+│   │   └── validators
+│   └── tsconfig.json
+├── certbot
+│   ├── conf
+│   │   └── renewal-hooks
+│   └── www
+├── docker-compose.local.yaml
+├── docker-compose.prod.yaml-bkp
+├── docker-compose.yaml
+├── estrutura-pastas.txt
+├── frontend
+│   ├── actions
+│   │   ├── auth.ts
+│   │   ├── category.ts
+│   │   ├── move.ts
+│   │   ├── product.ts
+│   │   └── user.ts
+│   ├── app
+│   │   ├── favicon.ico
+│   │   ├── globals.css
+│   │   ├── layout.tsx
+│   │   ├── login
+│   │   ├── page.tsx
+│   │   └── (painel)
+│   ├── components
+│   │   ├── back-button.tsx
+│   │   ├── categories
+│   │   ├── confirm-delete-dialog.tsx
+│   │   ├── dashboard
+│   │   ├── empty-state.tsx
+│   │   ├── field-error.tsx
+│   │   ├── logo.tsx
+│   │   ├── moves
+│   │   ├── page-title.tsx
+│   │   ├── pagination.tsx
+│   │   ├── products
+│   │   ├── sidebar.tsx
+│   │   ├── theme-provider.tsx
+│   │   ├── theme-toggle.tsx
+│   │   ├── ui
+│   │   └── users
+│   ├── components.json
+│   ├── Dockerfile
+│   ├── endpoints.md
+│   ├── eslint.config.mjs
+│   ├── estrutura_pastas.txt
+│   ├── hooks
+│   │   └── use-mobile.ts
+│   ├── lib
+│   │   ├── server-api.ts
+│   │   └── utils.ts
+│   ├── next.config.ts
+│   ├── next-env.d.ts
+│   ├── node_modules
+│   │   ├── acorn
+│   │   ├── acorn-jsx
+│   │   ├── ajv
+│   │   ├── @alloc
+│   │   ├── ansi-styles
+│   │   ├── argparse
+│   │   ├── aria-hidden
+│   │   ├── aria-query
+│   │   ├── array-buffer-byte-length
+│   │   ├── arraybuffer.prototype.slice
+│   │   ├── array-includes
+│   │   ├── array.prototype.findlast
+│   │   ├── array.prototype.findlastindex
+│   │   ├── array.prototype.flat
+│   │   ├── array.prototype.flatmap
+│   │   ├── array.prototype.tosorted
+│   │   ├── ast-types-flow
+│   │   ├── async-function
+│   │   ├── asynckit
+│   │   ├── available-typed-arrays
+│   │   ├── axe-core
+│   │   ├── axios
+│   │   ├── axobject-query
+│   │   ├── @babel
+│   │   ├── balanced-match
+│   │   ├── baseline-browser-mapping
+│   │   ├── brace-expansion
+│   │   ├── braces
+│   │   ├── browserslist
+│   │   ├── call-bind
+│   │   ├── call-bind-apply-helpers
+│   │   ├── call-bound
+│   │   ├── callsites
+│   │   ├── caniuse-lite
+│   │   ├── chalk
+│   │   ├── class-variance-authority
+│   │   ├── client-only
+│   │   ├── clsx
+│   │   ├── color-convert
+│   │   ├── color-name
+│   │   ├── combined-stream
+│   │   ├── concat-map
+│   │   ├── convert-source-map
+│   │   ├── cross-spawn
+│   │   ├── csstype
+│   │   ├── d3-array
+│   │   ├── d3-color
+│   │   ├── d3-ease
+│   │   ├── d3-format
+│   │   ├── d3-interpolate
+│   │   ├── d3-path
+│   │   ├── d3-scale
+│   │   ├── d3-shape
+│   │   ├── d3-time
+│   │   ├── d3-time-format
+│   │   ├── d3-timer
+│   │   ├── damerau-levenshtein
+│   │   ├── data-view-buffer
+│   │   ├── data-view-byte-length
+│   │   ├── data-view-byte-offset
+│   │   ├── debug
+│   │   ├── decimal.js-light
+│   │   ├── deep-is
+│   │   ├── define-data-property
+│   │   ├── define-properties
+│   │   ├── delayed-stream
+│   │   ├── detect-libc
+│   │   ├── detect-node-es
+│   │   ├── doctrine
+│   │   ├── dunder-proto
+│   │   ├── electron-to-chromium
+│   │   ├── @emnapi
+│   │   ├── emoji-regex
+│   │   ├── enhanced-resolve
+│   │   ├── es-abstract
+│   │   ├── escalade
+│   │   ├── escape-string-regexp
+│   │   ├── es-define-property
+│   │   ├── es-errors
+│   │   ├── es-iterator-helpers
+│   │   ├── @eslint
+│   │   ├── eslint
+│   │   ├── @eslint-community
+│   │   ├── eslint-config-next
+│   │   ├── eslint-import-resolver-node
+│   │   ├── eslint-import-resolver-typescript
+│   │   ├── eslint-module-utils
+│   │   ├── eslint-plugin-import
+│   │   ├── eslint-plugin-jsx-a11y
+│   │   ├── eslint-plugin-react
+│   │   ├── eslint-plugin-react-hooks
+│   │   ├── eslint-scope
+│   │   ├── eslint-visitor-keys
+│   │   ├── es-object-atoms
+│   │   ├── espree
+│   │   ├── esquery
+│   │   ├── esrecurse
+│   │   ├── es-set-tostringtag
+│   │   ├── es-shim-unscopables
+│   │   ├── es-toolkit
+│   │   ├── es-to-primitive
+│   │   ├── estraverse
+│   │   ├── esutils
+│   │   ├── eventemitter3
+│   │   ├── fast-deep-equal
+│   │   ├── fast-glob
+│   │   ├── fast-json-stable-stringify
+│   │   ├── fast-levenshtein
+│   │   ├── fastq
+│   │   ├── file-entry-cache
+│   │   ├── fill-range
+│   │   ├── find-up
+│   │   ├── flat-cache
+│   │   ├── flatted
+│   │   ├── @floating-ui
+│   │   ├── follow-redirects
+│   │   ├── for-each
+│   │   ├── form-data
+│   │   ├── function-bind
+│   │   ├── function.prototype.name
+│   │   ├── functions-have-names
+│   │   ├── generator-function
+│   │   ├── gensync
+│   │   ├── get-intrinsic
+│   │   ├── get-nonce
+│   │   ├── get-proto
+│   │   ├── get-symbol-description
+│   │   ├── get-tsconfig
+│   │   ├── globals
+│   │   ├── globalthis
+│   │   ├── glob-parent
+│   │   ├── gopd
+│   │   ├── graceful-fs
+│   │   ├── has-bigints
+│   │   ├── has-flag
+│   │   ├── hasown
+│   │   ├── has-property-descriptors
+│   │   ├── has-proto
+│   │   ├── has-symbols
+│   │   ├── has-tostringtag
+│   │   ├── hermes-estree
+│   │   ├── hermes-parser
+│   │   ├── @hookform
+│   │   ├── @humanfs
+│   │   ├── @humanwhocodes
+│   │   ├── ignore
+│   │   ├── @img
+│   │   ├── immer
+│   │   ├── import-fresh
+│   │   ├── imurmurhash
+│   │   ├── internal-slot
+│   │   ├── internmap
+│   │   ├── isarray
+│   │   ├── is-array-buffer
+│   │   ├── is-async-function
+│   │   ├── is-bigint
+│   │   ├── is-boolean-object
+│   │   ├── is-bun-module
+│   │   ├── is-callable
+│   │   ├── is-core-module
+│   │   ├── is-data-view
+│   │   ├── is-date-object
+│   │   ├── isexe
+│   │   ├── is-extglob
+│   │   ├── is-finalizationregistry
+│   │   ├── is-generator-function
+│   │   ├── is-glob
+│   │   ├── is-map
+│   │   ├── is-negative-zero
+│   │   ├── is-number
+│   │   ├── is-number-object
+│   │   ├── is-regex
+│   │   ├── is-set
+│   │   ├── is-shared-array-buffer
+│   │   ├── is-string
+│   │   ├── is-symbol
+│   │   ├── is-typed-array
+│   │   ├── is-weakmap
+│   │   ├── is-weakref
+│   │   ├── is-weakset
+│   │   ├── iterator.prototype
+│   │   ├── jiti
+│   │   ├── @jridgewell
+│   │   ├── jsesc
+│   │   ├── json5
+│   │   ├── json-buffer
+│   │   ├── json-schema-traverse
+│   │   ├── json-stable-stringify-without-jsonify
+│   │   ├── js-tokens
+│   │   ├── jsx-ast-utils
+│   │   ├── js-yaml
+│   │   ├── keyv
+│   │   ├── language-subtag-registry
+│   │   ├── language-tags
+│   │   ├── levn
+│   │   ├── lightningcss
+│   │   ├── lightningcss-linux-x64-gnu
+│   │   ├── lightningcss-linux-x64-musl
+│   │   ├── locate-path
+│   │   ├── lodash.merge
+│   │   ├── loose-envify
+│   │   ├── lru-cache
+│   │   ├── lucide-react
+│   │   ├── magic-string
+│   │   ├── math-intrinsics
+│   │   ├── merge2
+│   │   ├── micromatch
+│   │   ├── mime-db
+│   │   ├── mime-types
+│   │   ├── minimatch
+│   │   ├── minimist
+│   │   ├── ms
+│   │   ├── nanoid
+│   │   ├── napi-postinstall
+│   │   ├── @napi-rs
+│   │   ├── natural-compare
+│   │   ├── @next
+│   │   ├── next
+│   │   ├── next-themes
+│   │   ├── @nodelib
+│   │   ├── node-releases
+│   │   ├── @nolyfill
+│   │   ├── object-assign
+│   │   ├── object.assign
+│   │   ├── object.entries
+│   │   ├── object.fromentries
+│   │   ├── object.groupby
+│   │   ├── object-inspect
+│   │   ├── object-keys
+│   │   ├── object.values
+│   │   ├── optionator
+│   │   ├── own-keys
+│   │   ├── parent-module
+│   │   ├── path-exists
+│   │   ├── path-key
+│   │   ├── path-parse
+│   │   ├── picocolors
+│   │   ├── picomatch
+│   │   ├── p-limit
+│   │   ├── p-locate
+│   │   ├── possible-typed-array-names
+│   │   ├── postcss
+│   │   ├── prelude-ls
+│   │   ├── prop-types
+│   │   ├── proxy-from-env
+│   │   ├── punycode
+│   │   ├── queue-microtask
+│   │   ├── @radix-ui
+│   │   ├── react
+│   │   ├── react-dom
+│   │   ├── react-hook-form
+│   │   ├── react-is
+│   │   ├── react-redux
+│   │   ├── react-remove-scroll
+│   │   ├── react-remove-scroll-bar
+│   │   ├── react-style-singleton
+│   │   ├── recharts
+│   │   ├── redux
+│   │   ├── @reduxjs
+│   │   ├── redux-thunk
+│   │   ├── reflect.getprototypeof
+│   │   ├── regexp.prototype.flags
+│   │   ├── reselect
+│   │   ├── resolve
+│   │   ├── resolve-from
+│   │   ├── resolve-pkg-maps
+│   │   ├── reusify
+│   │   ├── @rtsao
+│   │   ├── run-parallel
+│   │   ├── safe-array-concat
+│   │   ├── safe-push-apply
+│   │   ├── safe-regex-test
+│   │   ├── scheduler
+│   │   ├── semver
+│   │   ├── set-function-length
+│   │   ├── set-function-name
+│   │   ├── set-proto
+│   │   ├── sharp
+│   │   ├── shebang-command
+│   │   ├── shebang-regex
+│   │   ├── side-channel
+│   │   ├── side-channel-list
+│   │   ├── side-channel-map
+│   │   ├── side-channel-weakmap
+│   │   ├── source-map-js
+│   │   ├── stable-hash
+│   │   ├── @standard-schema
+│   │   ├── stop-iteration-iterator
+│   │   ├── string.prototype.includes
+│   │   ├── string.prototype.matchall
+│   │   ├── string.prototype.repeat
+│   │   ├── string.prototype.trim
+│   │   ├── string.prototype.trimend
+│   │   ├── string.prototype.trimstart
+│   │   ├── strip-bom
+│   │   ├── strip-json-comments
+│   │   ├── styled-jsx
+│   │   ├── supports-color
+│   │   ├── supports-preserve-symlinks-flag
+│   │   ├── @swc
+│   │   ├── @tailwindcss
+│   │   ├── tailwindcss
+│   │   ├── tailwind-merge
+│   │   ├── tapable
+│   │   ├── tinyglobby
+│   │   ├── tiny-invariant
+│   │   ├── to-regex-range
+│   │   ├── ts-api-utils
+│   │   ├── tsconfig-paths
+│   │   ├── tslib
+│   │   ├── tw-animate-css
+│   │   ├── @tybys
+│   │   ├── type-check
+│   │   ├── typed-array-buffer
+│   │   ├── typed-array-byte-length
+│   │   ├── typed-array-byte-offset
+│   │   ├── typed-array-length
+│   │   ├── @types
+│   │   ├── typescript
+│   │   ├── @typescript-eslint
+│   │   ├── typescript-eslint
+│   │   ├── unbox-primitive
+│   │   ├── undici-types
+│   │   ├── @unrs
+│   │   ├── unrs-resolver
+│   │   ├── update-browserslist-db
+│   │   ├── uri-js
+│   │   ├── use-callback-ref
+│   │   ├── use-sidecar
+│   │   ├── use-sync-external-store
+│   │   ├── victory-vendor
+│   │   ├── which
+│   │   ├── which-boxed-primitive
+│   │   ├── which-builtin-type
+│   │   ├── which-collection
+│   │   ├── which-typed-array
+│   │   ├── word-wrap
+│   │   ├── yallist
+│   │   ├── yocto-queue
+│   │   ├── zod
+│   │   └── zod-validation-error
+│   ├── package.json
+│   ├── package-lock.json
+│   ├── postcss.config.mjs
+│   ├── public
+│   │   ├── file.svg
+│   │   ├── globe.svg
+│   │   ├── next.svg
+│   │   ├── vercel.svg
+│   │   └── window.svg
+│   ├── README.md
+│   ├── schemas
+│   │   ├── category.ts
+│   │   ├── move.ts
+│   │   ├── product.ts
+│   │   └── user.ts
+│   ├── services
+│   │   ├── auth.ts
+│   │   ├── branch.ts
+│   │   ├── category.ts
+│   │   ├── dashboard.ts
+│   │   ├── move.ts
+│   │   ├── product.ts
+│   │   └── user.ts
+│   ├── tsconfig.json
+│   └── types
+│       ├── api.ts
+│       ├── category.ts
+│       ├── dashboard.ts
+│       ├── move.ts
+│       ├── product.ts
+│       └── user.ts
+├── gerencia
+│   ├── admin.sh
+│   ├── backup-local.sh
+│   ├── backup_postgres.sh
+│   ├── backups.log
+│   ├── backups-oci
+│   │   ├── backup_local_estudos_2026-04-08_18-14-57.sql
+│   │   ├── backup_prod_estudos_2026-04-08_18-23-01.sql
+│   │   └── backup_prod_estudos_2026-04-08_18-34-51.sql
+│   ├── DEPLOY_ORACLE_CLOUD.md
+│   ├── deploy-producao.sh
+│   ├── gerencia-local.sh
+│   ├── gerencia-prod.sh
+│   ├── notificar_usuarios.js
+│   ├── restore_db_local.sh
+│   ├── restore_db.sh
+│   └── ROLLBACK-PRODUCAO.md
+├── nginx.conf
+├── nginx.local.conf
+├── ssh-key-2026-05-01.key
+└── ssh-key-2026-05-01.key.pub
+
+488 directories, 90 files

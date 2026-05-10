@@ -1,0 +1,95 @@
+services:
+  nginx:
+    image: nginx:alpine
+    container_name: nginx-proxy-local
+    restart: always
+    ports:
+      - "80:80"
+      # Porta 443 removida, localhost usará apenas HTTP
+    volumes:
+      # Usa o nginx.local.conf para desenvolvimento local (sem SSL)
+      - ./nginx.local.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - frontend
+      - backend
+    networks:
+      - eletrosil-network
+
+  # SERVIÇO CERTBOT REMOVIDO: Não faz sentido em localhost
+
+  db:
+    image: postgres:17
+    container_name: postgres-local
+    restart: always
+    ports:
+      - "5432:5432" # <-- ADICIONADO: Para você acessar o banco localmente pelo DBeaver/DataGrip
+    environment:
+      POSTGRES_PASSWORD: mrq831028
+      POSTGRES_USER: zemarques
+      POSTGRES_DB: estoque-db
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      # Nome do volume alterado para não conflitar caso você teste produção na mesma máquina
+      - postgres_data_local:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U zemarques -d estoque-db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - eletrosil-network
+
+  backend:
+    build: 
+      context: ./backend
+    container_name: backend-local
+    restart: always
+    ports:
+      - "3001:8080" # <-- EXTERNA: 3001 | INTERNA: 8080 (Onde o Uvicorn roda)
+    # environment:
+    #   PORT: 8080
+    #   DATABASE_URL: postgresql://zemarques:mrq831028@db:5432/estoque-db
+    #   BASE_URL: http://localhost
+
+    environment:
+      # Remova o PORT, NODE_ENV e BASE_URL
+      DATABASE_URL: postgresql://zemarques:mrq831028@db:5432/estoque-db
+      JWT_SECRET: "chave_secreta" # Adicione isso se o OpenCode pediu!
+    depends_on:
+      db:
+        condition: service_healthy
+    command: sh -c "uvicorn main:app --host 0.0.0.0 --port 8080 --reload"
+    volumes:
+      - ./backend:/app
+      # - /app/node_modules # <-- PODE REMOVER: Não existe em Python
+      - avatars_local:/app/public/avatars
+    networks:
+      - eletrosil-network
+
+  frontend:
+    build:
+      context: ./frontend
+    container_name: frontend-local
+    restart: always
+    ports:
+      - "3000:3000" # <-- ADICIONADO: Acesso direto ao Next.js para debug
+    environment:
+      - NODE_ENV=development
+      - NEXT_PUBLIC_API_URL=/api
+      - INTERNAL_API_URL=http://backend:8080 # <-- MUDADO: Para apontar para a porta real do Python
+    depends_on:
+      - backend
+    command: npm run dev
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    networks:
+      - eletrosil-network
+
+volumes:
+  postgres_data_local:
+  avatars_local:
+
+networks:
+  eletrosil-network:
+    driver: bridge
