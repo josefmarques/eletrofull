@@ -9,7 +9,10 @@ import { MoveItem } from "@/components/moves/move-item";
 import { MoveItemSkeleton } from "@/components/moves/move-item-skeleton";
 import { FileUp, ArrowRightLeft } from "lucide-react";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { Suspense } from "react";
+import { authService } from "@/services/auth";
+import { branchService } from "@/services/branch";
 
 export const dynamic = 'force-dynamic';
 
@@ -17,7 +20,7 @@ type Props = {
     searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 };
 
-async function MovesContent({ searchParams }: Props) {
+async function MovesContent({ searchParams, branchName }: Props & { branchName: string }) {
     const params = await searchParams;
     const page = typeof params.page === 'string' ? parseInt(params.page) : 1;
     const branchId = typeof params.branch === 'string' ? params.branch : undefined;
@@ -48,11 +51,14 @@ async function MovesContent({ searchParams }: Props) {
                 <Table>
                     <TableHeader>
                         <TableRow>
-                            <TableHead className="w-[150px]">Data</TableHead>
-                            <TableHead className="w-[100px]">Tipo</TableHead>
+                            <TableHead className="w-[120px]">Data</TableHead>
+                            <TableHead className="w-[90px]">Tipo</TableHead>
                             <TableHead>Produto</TableHead>
-                            <TableHead className="w-[80px] text-center">Qtd</TableHead>
-                            <TableHead className="w-[120px] text-right">Valor Unit.</TableHead>
+                            <TableHead className="w-[70px] text-center">Qtd</TableHead>
+                            <TableHead className="w-[100px] text-right">Valor Unit.</TableHead>
+                            <TableHead className="w-[220px]">Origem → Destino</TableHead>
+                            <TableHead className="w-[160px]">Descrição</TableHead>
+                            <TableHead className="w-[120px]">Responsável</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -67,11 +73,35 @@ async function MovesContent({ searchParams }: Props) {
     );
 }
 
-export default function Page({ searchParams }: Props) {
+export default async function Page({ searchParams }: Props) {
+    const params = await searchParams;
+    const [userRes, branchesRes] = await Promise.all([
+        authService.getMe(),
+        branchService.getBranches()
+    ]);
+
+    const user = userRes?.data;
+    if (!user) {
+        redirect("/login");
+    }
+
+    const isAdmin = user.isAdmin === true;
+    const branches = branchesRes?.data || [];
+    const urlBranchId = typeof params.branch === 'string' ? params.branch : undefined;
+    
+    // Admin ve o que esta na URL; usuario comum ve apenas a propria filial
+    const effectiveBranchId = isAdmin ? urlBranchId : user.branchId;
+    
+    // Nome da unidade para o titulo dinamico
+    const branchName = effectiveBranchId
+        ? branches.find((b: any) => String(b.id) === String(effectiveBranchId))?.name
+          || 'Unidade nao encontrada'
+        : 'Todas as Unidades';
+
     return (
         <div className="space-y-6">
             <PageTitle
-                title="Movimentações"
+                title={`Movimentações - ${branchName}`}
                 rightSide={
                     <div className="flex items-center gap-2">
                         <Link href="/moves/import">
@@ -97,11 +127,14 @@ export default function Page({ searchParams }: Props) {
                     <Table>
                         <TableHeader>
                             <TableRow>
-                                <TableHead className="w-[150px]">Data</TableHead>
-                                <TableHead className="w-[100px]">Tipo</TableHead>
+                                <TableHead className="w-[120px]">Data</TableHead>
+                                <TableHead className="w-[90px]">Tipo</TableHead>
                                 <TableHead>Produto</TableHead>
-                                <TableHead className="w-[80px] text-center">Qtd</TableHead>
-                                <TableHead className="w-[120px] text-right">Valor Unit.</TableHead>
+                                <TableHead className="w-[70px] text-center">Qtd</TableHead>
+                                <TableHead className="w-[100px] text-right">Valor Unit.</TableHead>
+                                <TableHead className="w-[220px]">Origem → Destino</TableHead>
+                                <TableHead className="w-[160px]">Descrição</TableHead>
+                                <TableHead className="w-[120px]">Responsável</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -112,7 +145,7 @@ export default function Page({ searchParams }: Props) {
                     </Table>
                 </div>
             }>
-                <MovesContent searchParams={searchParams} />
+                <MovesContent searchParams={searchParams} branchName={branchName} />
             </Suspense>
         </div>
     );

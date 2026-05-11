@@ -17,7 +17,9 @@ export default function LoginPage() {
     return (
         <div className="flex items-center justify-center min-h-screen bg-muted/50">
             <div className="w-full max-w-sm p-6 bg-background rounded-lg border shadow-sm">
-                <h1 className="text-2xl font-bold mb-6 text-center">Eletrosil Login</h1>
+                <h1 className="text-2xl font-bold mb-6 text-center">
+                    {process.env.NEXT_PUBLIC_COMPANY_NAME || "Eletrosil"} Login
+                </h1>
                 
                 {/* O atributo action chama a função do servidor diretamente */}
                 <form action={action} className="space-y-4">

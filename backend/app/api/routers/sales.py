@@ -15,8 +15,11 @@ from app.models.customers import Customer
 from app.models.moves import Move
 from app.models.enums import MoveType, PaymentMethod
 from app.models.payments import Payment
+from app.models.cash_sessions import CashSession
 from app.api.dependencies import get_current_user
 from app.models.users import User
+from app.models.audit import AuditAction
+from app.core.audit import log_audit
 
 router = APIRouter(tags=["sales"])
 
@@ -42,6 +45,32 @@ def _get_sale_names(sale: Sale, session: Session) -> dict:
         "userName": user_name,
         "customerName": customer_name,
     }
+
+
+def _validate_cash_session_open(branch_id, db_session, current_user):
+    """Valida se ha uma sessao de caixa ABERTA para a filial.
+
+    Admin Global esta isento (pode vender sem caixa aberto).
+    Levanta HTTPException 400 se a sessao nao estiver aberta.
+    """
+    if current_user.is_admin:
+        return
+
+    open_session = db_session.exec(
+        select(CashSession).where(
+            CashSession.branch_id == branch_id,
+            CashSession.status == "open",
+        )
+    ).first()
+
+    if not open_session:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Nao e possivel realizar a venda pois nao ha uma sessao de caixa "
+                "aberta para esta unidade. Abra o caixa antes de finalizar a venda."
+            ),
+        )
 
 
 # ─── Schemas ─────────────────────────────────────────────────────────────────
@@ -283,6 +312,9 @@ def create_sale(
 
     print(f"[create_sale] Venda iniciada — user={current_user.name} (admin={current_user.is_admin}), branch={branch.name} ({branch_id}), itens={len(body.items)}")
 
+    # ── Valida se ha sessao de caixa aberta para a filial ──
+    _validate_cash_session_open(branch_id, session, current_user)
+
     # Valida e processa cada item
     for item_payload in body.items:
         product = session.get(Product, item_payload.productId)
@@ -390,7 +422,15 @@ def create_sale(
         stock.updated_at = datetime.now()
         session.add(stock)
 
-        # Registra movimentação de saída
+        # Registra movimentação de saída com descrição "VENDA"
+        # Determina o nome do cliente (ou Consumidor Final)
+        customer_name = None
+        if body.customerId:
+            cust = session.get(Customer, body.customerId)
+            if cust:
+                customer_name = cust.name
+        desc_client = customer_name or "Consumidor Final"
+
         move = Move(
             branch_id=branch_id,
             product_id=item_payload.productId,
@@ -398,6 +438,7 @@ def create_sale(
             type=MoveType.OUT,
             quantity=Decimal(str(item_payload.quantity)),
             unit_price=product.unit_price,
+            description=f"VENDA - {desc_client}",
         )
         session.add(move)
 
@@ -409,6 +450,22 @@ def create_sale(
             amount=payment_data["amount"],
         )
         session.add(payment)
+
+    # ── Auditoria: NOVA_VENDA ──
+    log_audit(
+        session=session,
+        user_id=current_user.id,
+        action=AuditAction.CREATE,
+        entity_name="Sale",
+        entity_id=str(sale.id),
+        new_values={
+            "action": "NOVA_VENDA",
+            "total": str(total_value),
+            "branch": branch.name,
+            "items_count": len(body.items),
+            "customer": desc_client,
+        },
+    )
 
     session.commit()
     session.refresh(sale)
@@ -510,6 +567,9 @@ def pdv_checkout(
             detail="Filial não encontrada",
         )
 
+    # ── Valida se há sessão de caixa aberta para a filial ──
+    _validate_cash_session_open(branch_id, session, current_user)
+
     # ── Valida estoque para cada item (antes de criar qualquer registro) ──
     items_to_process = []
     for item in body.items:
@@ -609,7 +669,7 @@ def pdv_checkout(
         stock.updated_at = datetime.now()
         session.add(stock)
 
-        # Move (type='out')
+        # Move (type='out') com descrição "VENDA"
         move = Move(
             branch_id=branch_id,
             product_id=product.id,
@@ -617,6 +677,7 @@ def pdv_checkout(
             type=MoveType.OUT,
             quantity=qty,
             unit_price=product.unit_price,
+            description="VENDA - Consumidor Final",
         )
         session.add(move)
 
@@ -627,6 +688,22 @@ def pdv_checkout(
         amount=total_value,
     )
     session.add(payment)
+
+    # ── Auditoria: NOVA_VENDA ──
+    log_audit(
+        session=session,
+        user_id=current_user.id,
+        action=AuditAction.CREATE,
+        entity_name="Sale",
+        entity_id=str(sale.id),
+        new_values={
+            "action": "NOVA_VENDA",
+            "total": str(total_value),
+            "branch": branch.name,
+            "items_count": len(body.items),
+            "customer": "Consumidor Final",
+        },
+    )
 
     # ── Commit ──
     session.commit()

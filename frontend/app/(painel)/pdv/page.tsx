@@ -60,8 +60,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { CustomerQuickCreateDialog } from "@/components/products/customer-dialog";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/toast";
-import { cn } from "@/lib/utils";
+import { cn, formatDateTimeBR } from "@/lib/utils";
+import { useSearchParams, useRouter } from "next/navigation";
+import { EmptyState } from "@/components/empty-state";
 
 // ─── Mapa de métodos de pagamento ───────────────────────────────────────────
 const PAYMENT_METHODS = [
@@ -79,6 +82,11 @@ const METHOD_LABEL: Record<string, string> = {
 };
 
 export default function PDVPage() {
+  // ── Extrai branchId da URL (ex: /pdv?branch=uuid) ──
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const urlBranchId = searchParams.get("branch");
+
   const {
     state,
     addItem,
@@ -150,26 +158,20 @@ export default function PDVPage() {
     const api = getClientApi();
     api
       .get("/auth/me")
-      .then(async (res) => {
+      .then((res) => {
         const u = res.data?.data;
         setIsAdmin(u?.isAdmin === true);
 
-        if (u?.branchId) {
+        // REGRA: URL branchId tem prioridade ABSOLUTA sobre qualquer outro
+        if (urlBranchId) {
+          setSelectedBranchId(urlBranchId);
+          setUserBranchId(u?.branchId || null);
+        } else if (u?.branchId) {
           setUserBranchId(u.branchId);
           setSelectedBranchId(u.branchId);
         } else if (u?.isAdmin) {
           setUserBranchId(null);
           setHasOpenSession(null);
-          try {
-            const branchesRes = await branchClientService.getBranches();
-            const branchList = branchesRes?.data || [];
-            setBranches(branchList);
-            if (branchList.length > 0) {
-              setSelectedBranchId(branchList[0].id);
-            }
-          } catch {
-            // silent
-          }
         } else {
           setHasOpenSession(null);
         }
@@ -177,14 +179,31 @@ export default function PDVPage() {
       .catch(() => {});
   }, []);
 
+  // ── Carrega lista de unidades (SEMPRE, independente do perfil) ──
+  useEffect(() => {
+    let cancelled = false;
+    branchClientService.getBranches().then((res) => {
+      if (cancelled) return;
+      const branchList = res?.data || [];
+      setBranches(branchList);
+    });
+    return () => { cancelled = true; };
+  }, []);
+
+  // ── Admin sem URL branch: auto-seleciona primeira unidade ──
+  useEffect(() => {
+    if (isAdmin && !urlBranchId && branches.length > 0 && !selectedBranchId) {
+      setSelectedBranchId(branches[0].id);
+    }
+  }, [isAdmin, urlBranchId, branches, selectedBranchId]);
+
   // ── Busca de produtos (debounce 300ms) ──
   useEffect(() => {
     const timer = setTimeout(async () => {
       if (searchTerm.trim().length >= 2) {
         setIsSearchingProducts(true);
         setSelectedProductIndex(0);
-        const effectiveBranchId = isAdmin ? selectedBranchId : userBranchId;
-        const { data } = await productService.searchProducts(searchTerm, effectiveBranchId || undefined);
+        const { data } = await productService.searchProducts(searchTerm, selectedBranchId || undefined);
         setSearchResults(data || []);
         setShowResults(true);
         setIsSearchingProducts(false);
@@ -365,7 +384,7 @@ export default function PDVPage() {
         : "cash"; 
 
       const payload = {
-        branch_id: (isAdmin ? selectedBranchId : userBranchId) || "",
+        branch_id: selectedBranchId || "",
         payment_method: primaryMethod,
         discount_amount: parseFloat(state.discount) || 0,
         items: state.items.map((item) => ({
@@ -428,14 +447,14 @@ export default function PDVPage() {
         {/* ─── Cupom Térmico (oculto em tela, visível na impressão) ─── */}
         <div className="hidden print:block p-4 max-w-[80mm] mx-auto font-mono text-xs leading-tight">
           <div className="text-center mb-2">
-            <p className="text-sm font-bold">ELETROSIL</p>
+            <p className="text-sm font-bold">{(process.env.NEXT_PUBLIC_COMPANY_NAME || "ELETROSIL").toUpperCase()}</p>
             <p className="text-[10px]">Sistema de Gestão</p>
             <p>- - - - - - - - - - - - - - - -</p>
           </div>
           <div className="mb-2">
             <p>CUPOM NÃO FISCAL</p>
             <p>Nº {String(saleDone.receiptNumber || "").padStart(6, "0")}</p>
-            <p>Data: {new Date().toLocaleDateString("pt-BR")} às {new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</p>
+            <p>Data: {formatDateTimeBR(new Date().toISOString())}</p>
             <p>Operador: {saleDone.userName || "—"}</p>
             <p>Cliente: {state.customer?.name || "Consumidor Final"}</p>
             {state.customer?.cpfCnpj && <p>CPF/CNPJ: {state.customer.cpfCnpj}</p>}
@@ -497,7 +516,7 @@ export default function PDVPage() {
           <p className="text-center mb-1">- - - - - - - - - - - - - - - -</p>
           <div className="text-center text-[10px]">
             <p>Obrigado pela preferência!</p>
-            <p className="mt-1">Eletrosil - Sistema de Gestão</p>
+            <p className="mt-1">{process.env.NEXT_PUBLIC_COMPANY_NAME || "Eletrosil"} — Sistema de Gestão</p>
           </div>
         </div>
 
@@ -539,6 +558,43 @@ export default function PDVPage() {
     );
   }
 
+  // ── Nome da unidade para o badge do PDV (estritamente reativo) ──
+  const isLoadingBranches = branches.length === 0;
+  const selectedBranch = branches.find((b) => b.id === selectedBranchId);
+  const badgeText = isLoadingBranches
+    ? "Carregando..."
+    : selectedBranch
+      ? selectedBranch.name
+      : "Unidade Desconhecida";
+
+  // ==========================================================================
+  // GUARD: Se não há branchId, solicita seleção de unidade
+  // ==========================================================================
+  if (!urlBranchId && !userBranchId && !isAdmin) {
+    return (
+      <div className="h-[calc(100vh-76px)] flex items-center justify-center">
+        <EmptyState
+          message="Selecione uma unidade para acessar o PDV."
+          label="Ir para Unidades"
+          href="/dashboard"
+        />
+      </div>
+    );
+  }
+
+  // Se admin não selecionou unidade ainda (branches nao carregadas)
+  if (isAdmin && !selectedBranchId) {
+    return (
+      <div className="h-[calc(100vh-76px)] flex items-center justify-center">
+        <EmptyState
+          message="Carregando unidades disponíveis..."
+          label="Ir para Dashboard"
+          href="/dashboard"
+        />
+      </div>
+    );
+  }
+
   // ==========================================================================
   // PDV PRINCIPAL — Layout Otimizado para Velocidade
   // ==========================================================================
@@ -548,6 +604,13 @@ export default function PDVPage() {
     <div className="h-[calc(100vh-76px)] flex flex-col">
       {/* ─── Top Bar ─── */}
       <div className="flex items-center gap-3 mb-3 flex-shrink-0">
+        {/* Badge da Unidade */}
+        {selectedBranchId && (
+          <Badge variant="secondary" className="h-9 px-3 text-sm font-semibold whitespace-nowrap shrink-0 hidden md:inline-flex items-center gap-1.5">
+            <Building2 className="h-4 w-4" />
+            {badgeText}
+          </Badge>
+        )}
         {/* Input de Busca Gigante — sempre focado */}
         <div className="flex-1 relative">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
@@ -610,7 +673,7 @@ export default function PDVPage() {
           )}
         </div>
 
-        {/* Seletor de Filial (admin only) */}
+        {/* Seletor de Unidade (admin only) */}
         {isAdmin && branches.length > 0 && (
           <Select
             value={selectedBranchId || ""}
@@ -618,7 +681,7 @@ export default function PDVPage() {
           >
             <SelectTrigger className="w-44 h-14 text-base">
               <Building2 className="h-4 w-4 mr-1" />
-              <SelectValue placeholder="Filial" />
+              <SelectValue placeholder="Unidade" />
             </SelectTrigger>
             <SelectContent>
               {branches.map((b) => (

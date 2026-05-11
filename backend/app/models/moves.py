@@ -3,6 +3,9 @@ from sqlalchemy import Column, Enum as SAEnum
 from datetime import datetime
 from uuid import UUID, uuid4
 from decimal import Decimal
+from typing import Optional
+
+from app.core.timezone import br_now_naive
 from .enums import MoveType
 
 
@@ -26,4 +29,6 @@ class Move(SQLModel, table=True):
     )
     quantity: Decimal = Field(nullable=False)
     unit_price: Decimal = Field(nullable=False)
-    created_at: datetime = Field(default_factory=datetime.now, nullable=False)
+    description: Optional[str] = Field(default=None, max_length=255)
+    transfer_id: Optional[UUID] = Field(default=None, index=True)
+    created_at: datetime = Field(default_factory=br_now_naive, nullable=False)

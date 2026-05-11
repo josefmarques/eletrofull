@@ -4,6 +4,8 @@ from datetime import datetime
 from uuid import UUID, uuid4
 from typing import Optional
 
+from app.core.timezone import br_now_naive
+
 
 class SupplierProductMap(SQLModel, table=True):
     """Mapeia o código do produto do fornecedor para o produto local (Eletrosil).
@@ -26,7 +28,7 @@ class SupplierProductMap(SQLModel, table=True):
     local_product_id: UUID = Field(
         nullable=False, foreign_key="products.id",
     )
-    created_at: datetime = Field(default_factory=datetime.now, nullable=False)
+    created_at: datetime = Field(default_factory=br_now_naive, nullable=False)
 
     # Garantia de unicidade: um mesmo código de fornecedor mapeia pra UM produto local
     __table_args__ = (

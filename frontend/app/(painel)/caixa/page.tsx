@@ -67,6 +67,11 @@ export default function CaixaPage() {
 
   const refreshSession = () => fetchSession(false);
 
+  // Nome da unidade para o titulo dinamico
+  const caixaBranchName = selectedBranchId
+    ? branches.find((b) => b.id === selectedBranchId)?.name || "Unidade nao encontrada"
+    : "Selecione uma unidade";
+
   useEffect(() => {
     if (selectedBranchId) fetchSession();
   }, [selectedBranchId]);
@@ -195,17 +200,17 @@ export default function CaixaPage() {
 
   return (
     <div className="space-y-6 max-w-3xl mx-auto">
-      <PageTitle title="Controle de Caixa" />
+      <PageTitle title={`Controle de Caixa - ${caixaBranchName}`} />
 
       <Card>
-        <CardHeader><CardTitle className="text-base">Selecionar Filial</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="text-base">Selecionar Unidade</CardTitle></CardHeader>
         <CardContent>
           <select
             className="h-9 rounded-md border border-input bg-background px-3 text-sm w-full"
             value={selectedBranchId}
             onChange={(e) => setSelectedBranchId(e.target.value)}
           >
-            <option value="">Selecione uma filial</option>
+            <option value="">Selecione uma unidade</option>
             {branches.map((b) => (<option key={b.id} value={b.id}>{b.name}</option>))}
           </select>
         </CardContent>

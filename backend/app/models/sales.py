@@ -5,6 +5,8 @@ from uuid import UUID, uuid4
 from decimal import Decimal
 from typing import Optional
 
+from app.core.timezone import br_now_naive
+
 
 class Sale(SQLModel, table=True):
     """Modelo da tabela 'sales' - Vendas."""
@@ -24,4 +26,4 @@ class Sale(SQLModel, table=True):
         default=None,
         sa_column=Column(Integer, Identity(start=1, increment=1), nullable=False),
     )
-    created_at: Optional[datetime] = Field(default_factory=datetime.now)
+    created_at: Optional[datetime] = Field(default_factory=br_now_naive)

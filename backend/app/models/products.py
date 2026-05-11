@@ -3,6 +3,8 @@ from sqlalchemy import Column, Enum as SAEnum
 from datetime import datetime
 from uuid import UUID, uuid4
 from typing import Optional
+
+from app.core.timezone import br_now_naive
 from .enums import UnitType
 
 
@@ -26,5 +28,5 @@ class Product(SQLModel, table=True):
         ),
     )
     deleted_at: Optional[datetime] = Field(default=None)
-    created_at: datetime = Field(default_factory=datetime.now, nullable=False)
-    updated_at: datetime = Field(default_factory=datetime.now, nullable=False)
+    created_at: datetime = Field(default_factory=br_now_naive, nullable=False)
+    updated_at: datetime = Field(default_factory=br_now_naive, nullable=False)

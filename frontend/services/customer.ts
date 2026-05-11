@@ -50,18 +50,36 @@ export const customerService = {
      * Cria um novo cliente (para cadastro rápido no PDV)
      */
     createCustomer: async (data: Partial<Customer>): Promise<ApiResponse<Customer>> => {
+        const api = getClientApi();
+        console.log('[CustomerService] Creating customer:', data);
+
         try {
-            const api = getClientApi();
-            console.log('[CustomerService] Creating customer:', data);
-            const response = await api.post('/customers', data);
+            // ── validateStatus: 409 NÃO dispara exceção ──
+            // Impede que o Next.js Error Overlay capture o 409 como erro
+            const response = await api.post('/customers', data, {
+                validateStatus: (status) => status < 500,
+            });
+
+            // ── 409 Conflict → CPF duplicado (resposta estruturada do backend) ──
+            if (response.status === 409) {
+                const msg =
+                    response.data?.message ||
+                    'Este CPF já está cadastrado no sistema.';
+                return { error: msg, data: null };
+            }
+
+            // ── Sucesso (201) ──
             return response.data;
         } catch (error: any) {
-            console.error("[CustomerService] Error creating customer:", {
+            // Aquio só chegam erros de rede (timeout, sem conexão)
+            console.error('[CustomerService] Network error creating customer:', {
                 data,
-                error: error.message,
-                response: error.response?.data
+                message: error?.message || 'Erro de conexão',
             });
-            return { error: error.response?.data?.error || 'Erro ao criar cliente', data: null };
+            return {
+                error: 'Erro de conexão ao servidor. Verifique sua rede.',
+                data: null,
+            };
         }
     }
 };

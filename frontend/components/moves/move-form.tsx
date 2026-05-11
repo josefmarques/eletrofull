@@ -212,6 +212,17 @@ export const MoveForm = ({ user, branches }: MoveFormProps) => {
               />
             </div>
           </div>
+
+          {/* Descrição / Motivo */}
+          <div className="space-y-2">
+            <Label htmlFor="description">Descrição / Motivo</Label>
+            <Input
+              id="description"
+              name="description"
+              type="text"
+              placeholder="Ex: Ajuste de inventário, avaria, devolução..."
+            />
+          </div>
         </div>
 
         <Button

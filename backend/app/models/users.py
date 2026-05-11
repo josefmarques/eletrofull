@@ -4,6 +4,8 @@ from uuid import UUID, uuid4
 from typing import Optional
 from pydantic import model_validator
 
+from app.core.timezone import br_now_naive
+
 
 class User(SQLModel, table=True):
     """Modelo da tabela 'users' - Usuários do sistema."""
@@ -19,8 +21,8 @@ class User(SQLModel, table=True):
     role: str = Field(default="operator", nullable=False)
     token: Optional[str] = Field(default=None)
     deleted_at: Optional[datetime] = Field(default=None)
-    created_at: datetime = Field(default_factory=datetime.now, nullable=False)
-    updated_at: datetime = Field(default_factory=datetime.now, nullable=False)
+    created_at: datetime = Field(default_factory=br_now_naive, nullable=False)
+    updated_at: datetime = Field(default_factory=br_now_naive, nullable=False)
 
     @model_validator(mode='before')
     @classmethod

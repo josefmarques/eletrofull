@@ -4,6 +4,8 @@ from uuid import UUID, uuid4
 from decimal import Decimal
 from typing import Optional
 
+from app.core.timezone import br_now_naive
+
 
 class CashMovement(SQLModel, table=True):
     """Modelo da tabela 'cash_movements' - Movimentações de caixa."""
@@ -16,4 +18,4 @@ class CashMovement(SQLModel, table=True):
     amount: Decimal = Field(nullable=False, max_digits=12, decimal_places=2)
     description: Optional[str] = Field(default=None)
     reference_id: Optional[str] = Field(default=None)
-    created_at: Optional[datetime] = Field(default_factory=datetime.now)
+    created_at: Optional[datetime] = Field(default_factory=br_now_naive)

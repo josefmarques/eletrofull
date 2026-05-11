@@ -4,6 +4,8 @@ from uuid import UUID, uuid4
 from decimal import Decimal
 from typing import Optional
 
+from app.core.timezone import br_now_naive
+
 
 class CashSession(SQLModel, table=True):
     """Modelo da tabela 'cash_sessions' - Sessões de caixa."""
@@ -31,6 +33,6 @@ class CashSession(SQLModel, table=True):
         default=None, max_digits=12, decimal_places=2
     )
     status: str = Field(default="open", nullable=False)
-    opened_at: Optional[datetime] = Field(default_factory=datetime.now)
+    opened_at: Optional[datetime] = Field(default_factory=br_now_naive)
     closed_at: Optional[datetime] = Field(default=None)
     observations: Optional[str] = Field(default=None)

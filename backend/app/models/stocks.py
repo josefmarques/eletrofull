@@ -4,6 +4,8 @@ from datetime import datetime
 from uuid import UUID, uuid4
 from decimal import Decimal
 
+from app.core.timezone import br_now_naive
+
 
 class Stock(SQLModel, table=True):
     """Modelo da tabela 'stocks' - Estoque por filial."""
@@ -17,4 +19,4 @@ class Stock(SQLModel, table=True):
         default="0", nullable=False, sa_column_kwargs={"name": "minimo_quantity"}
     )
     maximum_quantity: Decimal = Field(default="0", nullable=False)
-    updated_at: datetime = Field(default_factory=datetime.now, nullable=False)
+    updated_at: datetime = Field(default_factory=br_now_naive, nullable=False)

@@ -13,8 +13,7 @@ export async function createMoveAction(prevState: any, formData: FormData) {
     branchId: formData.get('branchId'), // Unidade de Operação selecionada no formulário
     type: formData.get('type'),
     quantity: formData.get('quantity'),
-
-    
+    description: formData.get('description'),
   }
   
 
@@ -32,7 +31,7 @@ export async function createMoveAction(prevState: any, formData: FormData) {
   let success = false;
 
   try {
-    const { productId, branchId, type, quantity } = validation.data
+    const { productId, branchId, type, quantity, description } = validation.data
 
     // 3. Chamada ao serviço garantindo o envio da filial
     const response = await moveService.createMove({
@@ -40,6 +39,7 @@ export async function createMoveAction(prevState: any, formData: FormData) {
       branchId,
       type,
       quantity,
+      description,
     });
 
     if (response.error) {

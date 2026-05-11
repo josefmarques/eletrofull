@@ -11,10 +11,12 @@ services:
       - /etc/eletrosil-certs:/etc/letsencrypt:ro
       - ./certbot/www:/var/www/certbot:ro
     depends_on:
-      - frontend
-      - backend
+      - eletrosil-frontend
+      - eletrosil-backend
+      - emarques-frontend
+      - emarques-backend
     networks:
-      - eletrosil-network
+      - eletrofull-network 
 
   certbot:
     image: certbot/certbot
@@ -23,7 +25,7 @@ services:
       - /etc/eletrosil-certs:/etc/letsencrypt
       - ./certbot/www:/var/www/certbot
     networks:
-      - eletrosil-network
+      - eletrofull-network
 
   db:
     image: postgres:17
@@ -32,27 +34,39 @@ services:
     environment:
       POSTGRES_PASSWORD: mrq831028
       POSTGRES_USER: zemarques
-      POSTGRES_DB: estoque-db
+      POSTGRES_DB: postgres
       PGDATA: /var/lib/postgresql/data/pgdata
+      TZ: America/Sao_Paulo
+    command:
+      - "postgres"
+      - "-c"
+      - "timezone=America/Sao_Paulo"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./init-multiple-dbs.sql:/docker-entrypoint-initdb.d/init-multiple-dbs.sql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U zemarques -d estoque-db"]
+      test: ["CMD-SHELL", "pg_isready -U zemarques"]
       interval: 5s
       timeout: 5s
       retries: 10
     networks:
-      - eletrosil-network
+      - eletrofull-network
 
-  backend:
+  # ══════════════════════════════════════════════════════════════════════════
+  # TENANT 1 — ELETROSIL
+  # ══════════════════════════════════════════════════════════════════════════
+
+  eletrosil-backend:
     build:
       context: ./backend
-    container_name: backend
+    container_name: eletrosil-backend
     restart: always
     environment:
-      DATABASE_URL: postgresql://zemarques:mrq831028@db:5432/estoque-db
+      DATABASE_URL: postgresql://zemarques:mrq831028@db:5432/eletrosil_db
       JWT_SECRET: "32f41ffaa7ad6f9eda312905d009be9e39955b7c0d078d24875a2396e5b61a8e"
-      BASE_URL: https://eletrosil.top 
+      BASE_URL: https://eletrosil.top
+      COMPANY_NAME: "Eletrosil"
+      TZ: America/Sao_Paulo
     depends_on:
       db:
         condition: service_healthy
@@ -60,28 +74,75 @@ services:
     volumes:
       - avatars:/app/public/avatars
     networks:
-      - eletrosil-network
+      - eletrofull-network
 
-  frontend:
+  eletrosil-frontend:
     build:
       context: ./frontend
-    container_name: frontend
+    container_name: eletrosil-frontend
     restart: always
     environment:
       - NODE_ENV=production
       - NEXT_PUBLIC_API_URL=/api
-      - INTERNAL_API_URL=http://backend:8080
+      - INTERNAL_API_URL=http://eletrosil-backend:8080
+      - NEXT_PUBLIC_COMPANY_NAME=Eletrosil
+      - NEXT_PUBLIC_PRIMARY_COLOR=#6d28d9
       - NEXT_TELEMETRY_DISABLED=1
+      - TZ=America/Sao_Paulo
     depends_on:
-      - backend
+      - eletrosil-backend
     command: sh -c "npm run build && npm run start"
     networks:
-      - eletrosil-network
+      - eletrofull-network
+
+  # ══════════════════════════════════════════════════════════════════════════
+  # TENANT 2 — ELETROMARQUES
+  # ══════════════════════════════════════════════════════════════════════════
+
+  emarques-backend:
+    build:
+      context: ./backend
+    container_name: emarques-backend
+    restart: always
+    environment:
+      DATABASE_URL: postgresql://zemarques:mrq831028@db:5432/emarques_db
+      JWT_SECRET: "emarques-secret-key-change-in-production"
+      BASE_URL: https://eletromarques.top
+      COMPANY_NAME: "Eletromarques"
+      TZ: America/Sao_Paulo
+    depends_on:
+      db:
+        condition: service_healthy
+    command: sh -c "uvicorn main:app --host 0.0.0.0 --port 8080"
+    volumes:
+      - avatars_emarques:/app/public/avatars
+    networks:
+      - eletrofull-network
+
+  emarques-frontend:
+    build:
+      context: ./frontend
+    container_name: emarques-frontend
+    restart: always
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_API_URL=/api
+      - INTERNAL_API_URL=http://emarques-backend:8080
+      - NEXT_PUBLIC_COMPANY_NAME=Eletromarques
+      - NEXT_PUBLIC_PRIMARY_COLOR=#2563eb
+      - NEXT_TELEMETRY_DISABLED=1
+      - TZ=America/Sao_Paulo
+    depends_on:
+      - emarques-backend
+    command: sh -c "npm run build && npm run start"
+    networks:
+      - eletrofull-network
 
 volumes:
   postgres_data:
   avatars:
+  avatars_emarques:
 
 networks:
-  eletrosil-network:
+  eletrofull-network:
     driver: bridge

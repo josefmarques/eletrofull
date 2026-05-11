@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog"
@@ -9,7 +9,8 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { customerService } from "@/services/customer"
 import { Customer } from "@/types/sale"
-import { UserPlus, Loader2 } from "lucide-react"
+import { maskCpfCnpj } from "@/lib/utils"
+import { UserPlus, Loader2, AlertCircle } from "lucide-react"
 
 type Props = {
   open: boolean
@@ -24,6 +25,21 @@ export function CustomerQuickCreateDialog({ open, onOpenChange, onCustomerCreate
   const [phone, setPhone] = useState("")
   const [error, setError] = useState("")
   const [saving, setSaving] = useState(false)
+
+  // ── Separa o tipo de erro para estilização diferente ──
+  const isConflictError = error === "Este CPF já está cadastrado no sistema."
+
+  // ── Limpa estado de erro ao abrir/fechar o modal ──
+  useEffect(() => {
+    if (!open) {
+      // Modal foi fechado — limpa tudo
+      setError("");
+      setSaving(false);
+    } else {
+      // Modal foi aberto — limpa apenas o erro
+      setError("");
+    }
+  }, [open]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -87,8 +103,9 @@ export function CustomerQuickCreateDialog({ open, onOpenChange, onCustomerCreate
             <Input
               id="cpf"
               value={cpfCnpj}
-              onChange={(e) => setCpfCnpj(e.target.value)}
+              onChange={(e) => setCpfCnpj(maskCpfCnpj(e.target.value))}
               placeholder="000.000.000-00"
+              maxLength={18}
             />
           </div>
 
@@ -114,7 +131,16 @@ export function CustomerQuickCreateDialog({ open, onOpenChange, onCustomerCreate
           </div>
 
           {error && (
-            <p className="text-sm text-red-500 bg-red-50 p-2 rounded">{error}</p>
+            <div
+              className={`flex items-start gap-2 p-3 rounded-md text-sm ${
+                isConflictError
+                  ? "bg-amber-50 border border-amber-200 text-amber-800 dark:bg-amber-900/20 dark:border-amber-700 dark:text-amber-300"
+                  : "bg-red-50 border border-red-200 text-red-700 dark:bg-red-900/20 dark:border-red-700 dark:text-red-300"
+              }`}
+            >
+              <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+              <span>{error}</span>
+            </div>
           )}
 
           <div className="flex gap-2 justify-end">

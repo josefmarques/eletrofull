@@ -6,6 +6,8 @@ from uuid import UUID, uuid4
 from typing import Optional
 from enum import Enum
 
+from app.core.timezone import br_now_naive
+
 
 class AuditAction(str, Enum):
     """Ações possíveis registradas na auditoria."""
@@ -40,4 +42,4 @@ class AuditLog(SQLModel, table=True):
         default=None,
         sa_column=Column(JSON, nullable=True),
     )
-    created_at: datetime = Field(default_factory=datetime.now, nullable=False)
+    created_at: datetime = Field(default_factory=br_now_naive, nullable=False)

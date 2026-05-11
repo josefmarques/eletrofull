@@ -55,6 +55,11 @@ export default function SalesPage() {
         return branches.find((b) => b.id === id)?.name || id.slice(0, 8) + "...";
     };
 
+    // Nome da unidade para o titulo dinamico
+    const pageTitleBranchName = branchFilter
+        ? getBranchName(branchFilter)
+        : "Todas as Unidades";
+
     const methodLabel: Record<string, string> = {
         cash: "Dinheiro",
         credit_card: "Cartão Crédito",
@@ -65,7 +70,7 @@ export default function SalesPage() {
 
     return (
         <div className="space-y-6">
-            <PageTitle title="Histórico de Vendas" />
+            <PageTitle title={`Histórico de Vendas - ${pageTitleBranchName}`} />
 
             <Card>
                 <CardHeader>

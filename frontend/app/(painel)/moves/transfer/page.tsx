@@ -76,7 +76,7 @@ export default function TransferPage() {
   const router = useRouter();
   const { addToast } = useToast();
 
-  // ─── Filiais ─────────────────────────────────────────────────────────
+  // ─── Unidades ─────────────────────────────────────────────────────────
   const [branches, setBranches] = useState<BranchOption[]>([]);
   const [isLoadingBranches, setIsLoadingBranches] = useState(true);
 
@@ -247,7 +247,7 @@ export default function TransferPage() {
   const handleSubmit = async () => {
     if (!sourceBranchId || !destBranchId) {
       addToast({
-        title: "Selecione as filiais",
+        title: "Selecione as unidades",
         description: "É necessário selecionar origem e destino.",
         type: "error",
       });
@@ -256,7 +256,7 @@ export default function TransferPage() {
 
     if (sourceBranchId === destBranchId) {
       addToast({
-        title: "Filiais iguais",
+        title: "Unidades iguais",
         description: "A origem e o destino devem ser diferentes.",
         type: "error",
       });
@@ -328,20 +328,20 @@ export default function TransferPage() {
   return (
     <div className="space-y-6">
       <PageTitle
-        title="Transferência Multi-Filial"
+        title="Transferência entre Unidades"
         leftSide={<BackButton fallbackUrl="/moves" />}
       />
 
-      {/* ── Seletor de Filiais ── */}
+      {/* ── Seletor de Unidades ── */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
             <Store className="h-5 w-5 text-primary" />
-            Filiais
+            Unidades
           </CardTitle>
           <CardDescription>
-            Selecione a filial de origem (de onde sairão os produtos) e a
-            filial de destino (para onde irão).
+            Selecione a unidade de origem (de onde sairão os produtos) e a
+            unidade de destino (para onde irão).
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -352,7 +352,7 @@ export default function TransferPage() {
                 <span className="inline-flex items-center justify-center rounded-full bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 w-5 h-5 text-xs font-bold">
                   O
                 </span>
-                Filial de Origem
+                Unidade de Origem
               </Label>
               <Select
                 value={sourceBranchId}
@@ -400,7 +400,7 @@ export default function TransferPage() {
                 <span className="inline-flex items-center justify-center rounded-full bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 w-5 h-5 text-xs font-bold">
                   D
                 </span>
-                Filial de Destino
+                Unidade de Destino
               </Label>
               <Select
                 value={destBranchId}
@@ -726,8 +726,8 @@ export default function TransferPage() {
         <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-900/20 dark:border-amber-800 p-3 text-sm text-amber-800 dark:text-amber-300">
           <AlertCircle className="h-4 w-4 shrink-0" />
           <p>
-            A filial de origem e destino devem ser diferentes. Selecione
-            filiais distintas.
+            A unidade de origem e destino devem ser diferentes. Selecione
+            unidades distintas.
           </p>
         </div>
       )}

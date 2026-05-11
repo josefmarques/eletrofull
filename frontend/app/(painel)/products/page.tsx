@@ -44,13 +44,13 @@ export default async function Page({ searchParams }: Props) {
     // Admin vê o que está na URL, usuário comum vê apenas a própria filial
     const effectiveBranchId = isAdmin ? urlBranchId : user.branchId;
 
-    // NOME DA FILIAL PARA O TÍTULO DINÂMICO (Tarefa 3 do Sprint 8)
-    // Admin Global → "Rede Completa"
-    // Manager/Operator → "[Nome da Filial]" (sempre a filial dele)
-    const branchName = isAdminGlobal
-        ? 'Rede Completa'
-        : branches.find((b: any) => String(b.id) === String(effectiveBranchId))?.name 
-          || 'Filial não encontrada';
+    // NOME DA UNIDADE PARA O TÍTULO DINÂMICO
+    // Se uma unidade específica estiver selecionada (effectiveBranchId definido), exibe o nome dela
+    // Caso contrário (modo global / Rede Completa), exibe "Rede Completa"
+    const branchName = effectiveBranchId
+        ? branches.find((b: any) => String(b.id) === String(effectiveBranchId))?.name
+          || 'Unidade não encontrada'
+        : 'Rede Completa';
 
     // PASSAMOS A FILIAL EFETIVA PARA A BUSCA NO BACKEND
     const productsRes = await productService.getProducts(effectiveBranchId); 
@@ -97,7 +97,7 @@ export default async function Page({ searchParams }: Props) {
                                 <TableHead className="hidden lg:table-cell font-semibold">Categoria</TableHead>
                                 <TableHead className="w-[140px] text-right font-semibold">Preço Unit.</TableHead>
                                 <TableHead className="w-[160px] text-center text-primary font-bold bg-primary/5">
-                                    Estoque {effectiveBranchId ? '(Filial)' : '(Geral)'}
+                                    Estoque {effectiveBranchId ? '(Unidade)' : '(Geral)'}
                                 </TableHead>
                                 <TableHead className="w-[100px] text-right font-semibold">Ações</TableHead>
                             </TableRow>

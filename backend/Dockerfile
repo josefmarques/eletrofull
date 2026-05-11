@@ -1,5 +1,14 @@
 FROM python:3.11-slim
 
+# ── Configura Timezone Brasil ──
+ENV TZ=America/Sao_Paulo
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends tzdata && \
+    ln -fs /usr/share/zoneinfo/America/Sao_Paulo /etc/localtime && \
+    dpkg-reconfigure --frontend noninteractive tzdata && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 
 COPY requirements.txt .

@@ -50,7 +50,8 @@ export const moveService = {
                 productId: data.productId,
                 branchId: data.branchId,
                 type: data.type,
-                quantity: Number(data.quantity)
+                quantity: Number(data.quantity),
+                description: data.description || undefined,
             });
 
             return response.data;

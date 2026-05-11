@@ -1,5 +1,6 @@
 import { Suspense } from "react"
 import { redirect } from "next/navigation"
+import type { Metadata } from "next"
 import { DashboardFilter } from "@/components/dashboard/dashboard-filter"
 import { BranchSelector } from "@/components/dashboard/branch-selector" // <-- Importado aqui
 import { InventoryValueCard } from "@/components/dashboard/inventory-value-card"
@@ -14,6 +15,12 @@ import { PageTitle } from "@/components/page-title"
 import { formatDateToYYYYMMDD } from "@/lib/utils"
 import { authService } from "@/services/auth"
 import { getServerApi } from "@/lib/server-api"
+
+const companyName = process.env.NEXT_PUBLIC_COMPANY_NAME || "Eletrosil";
+
+export const metadata: Metadata = {
+  title: `${companyName} — Dashboard`
+};
 
 export default async function DashboardPage(props: {
     searchParams: Promise<{ period?: string; branch?: string }>

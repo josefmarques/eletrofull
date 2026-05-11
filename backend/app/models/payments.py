@@ -4,6 +4,7 @@ from uuid import UUID, uuid4
 from decimal import Decimal
 from typing import Optional
 
+from app.core.timezone import br_now_naive
 from app.models.enums import PaymentMethod
 
 
@@ -19,4 +20,4 @@ class Payment(SQLModel, table=True):
     sale_id: UUID = Field(nullable=False, foreign_key="sales.id")
     method: PaymentMethod = Field(nullable=False)
     amount: Decimal = Field(nullable=False, max_digits=12, decimal_places=2)
-    created_at: Optional[datetime] = Field(default_factory=datetime.now)
+    created_at: Optional[datetime] = Field(default_factory=br_now_naive)

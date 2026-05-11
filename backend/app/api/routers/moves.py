@@ -15,6 +15,8 @@ from app.models.supplier_maps import SupplierProductMap
 from app.models.branches import Branch
 from app.api.dependencies import get_current_user
 from app.models.users import User
+from app.models.audit import AuditAction
+from app.core.audit import log_audit
 from app.services.nfe_parser import parse_nfe_xml
 
 router = APIRouter(tags=["moves"])
@@ -327,7 +329,7 @@ def process_entry(
                 })
                 continue
 
-            # Cria o registro de movimentação (type='in')
+            # Cria o registro de movimentação (type='in') com descrição
             move = Move(
                 branch_id=body.branch_id,
                 product_id=item.local_product_id,
@@ -335,8 +337,31 @@ def process_entry(
                 type=MoveType.IN,
                 quantity=qty,
                 unit_price=product.unit_price,
+                description=f"Entrada via XML/importação em {branch.name}",
             )
             session.add(move)
+            session.flush()
+
+            # ── Log de Auditoria ──
+            audit_desc = (
+                f"Entrada via XML: {qty} {product.unit_type.value if hasattr(product.unit_type, 'value') else product.unit_type} "
+                f"de {product.name} em {branch.name}"
+            )
+            log_audit(
+                session=session,
+                user_id=current_user.id,
+                action=AuditAction.CREATE,
+                entity_name="Move",
+                entity_id=str(move.id),
+                new_values={
+                    "action": "ENTRADA_ESTOQUE",
+                    "description": audit_desc,
+                    "product": product.name,
+                    "quantity": str(qty),
+                    "branch": branch.name,
+                    "origin": "XML/Fornecedor",
+                },
+            )
 
             # Upsert no Stock: busca registro existente
             stock = session.exec(
@@ -514,11 +539,16 @@ def transfer_stock(
             },
         )
 
+    # Gera um UUID único para vincular os pares de movimentos (transferência)
+    transfer_uuid = uuid4()
+
     # ── Executa as operações de transferência ──
+    moves_criados = []
     for item in itens_processados:
         product_id = item["product_id"]
         qty = item["quantity"]
         unit_price = item["unit_price"]
+        product_name = item["product_name"]
 
         # A) Subtrai do Stock da origem
         source_stock = session.exec(
@@ -531,7 +561,7 @@ def transfer_stock(
         source_stock.updated_at = datetime.now()
         session.add(source_stock)
 
-        # B) Move type='out' para a origem
+        # B) Move type='out' para a origem (com descrição e transfer_id)
         move_out = Move(
             branch_id=body.source_branch_id,
             product_id=product_id,
@@ -539,8 +569,11 @@ def transfer_stock(
             type=MoveType.OUT,
             quantity=qty,
             unit_price=unit_price,
+            description=f"Transferência de {source_branch.name} para {dest_branch.name}",
+            transfer_id=transfer_uuid,
         )
         session.add(move_out)
+        moves_criados.append((move_out, product_name, source_branch.name, "out", qty))
 
         # C) Upsert no Stock do destino
         dest_stock = session.exec(
@@ -564,7 +597,7 @@ def transfer_stock(
             )
             session.add(dest_stock)
 
-        # D) Move type='in' para o destino
+        # D) Move type='in' para o destino (com descrição e transfer_id)
         move_in = Move(
             branch_id=body.destination_branch_id,
             product_id=product_id,
@@ -572,8 +605,36 @@ def transfer_stock(
             type=MoveType.IN,
             quantity=qty,
             unit_price=unit_price,
+            description=f"Transferência de {source_branch.name} para {dest_branch.name}",
+            transfer_id=transfer_uuid,
         )
         session.add(move_in)
+        moves_criados.append((move_in, product_name, dest_branch.name, "in", qty))
+
+    session.flush()
+
+    # ── Log de Auditoria para cada movimento criado ──
+    for move, product_name, branch_name, move_type, qty in moves_criados:
+        audit_desc = (
+            f"Transferiu {qty} de {product_name} "
+            f"de {source_branch.name} para {dest_branch.name}"
+        )
+        log_audit(
+            session=session,
+            user_id=current_user.id,
+            action=AuditAction.CREATE,
+            entity_name="Move",
+            entity_id=str(move.id),
+            new_values={
+                "action": "TRANSFERENCIA_ESTOQUE",
+                "description": audit_desc,
+                "product": product_name,
+                "quantity": str(qty),
+                "from": source_branch.name,
+                "to": dest_branch.name,
+                "transfer_id": str(transfer_uuid),
+            },
+        )
 
     # Commit único — se algo explodir, rollback automático
     session.commit()
@@ -612,10 +673,20 @@ def list_moves(
     session: Session = Depends(get_session),
     _current_user: User = Depends(get_current_user),
 ):
-    """Lista movimentações de estoque com filtros opcionais."""
+    """Lista movimentações de estoque com filtros opcionais.
+
+    Retorna dados enriquecidos com:
+    - branchName (nome da unidade)
+    - userName (nome do responsável)
+    - description (descrição textual)
+    - transferId (se for parte de uma transferência)
+    - origin / destination (legíveis para exibição)
+    """
     query = (
-        select(Move, Product.name)
+        select(Move, Product.name, Branch.name, User.name)
         .join(Product, Move.product_id == Product.id)
+        .join(Branch, Move.branch_id == Branch.id)
+        .join(User, Move.user_id == User.id)
         .order_by(Move.created_at.desc())
     )
 
@@ -628,16 +699,43 @@ def list_moves(
     rows = session.exec(query).all()
 
     result = []
-    for move, product_name in rows:
+    for move, product_name, branch_name, user_name in rows:
+        type_label = move.type.value if hasattr(move.type, "value") else str(move.type)
+
+        # Determina Origem e Destino com base no tipo e descrição
+        is_transfer = move.transfer_id is not None
+        if is_transfer:
+            # Extrai o nome da outra filial a partir da description
+            # Formato: "Transferência de [Origem] para [Destino]"
+            origin = move.description.split(" de ")[1].split(" para ")[0] if move.description and " de " in move.description else branch_name
+            destination = move.description.split(" para ")[1] if move.description and " para " in move.description else branch_name
+        elif type_label == "in":
+            origin = "Sistema/Fornecedor"
+            destination = branch_name
+        else:
+            origin = branch_name
+            # Se a descrição começa com "VENDA", usa o nome do cliente como destino
+            if move.description and move.description.startswith("VENDA"):
+                # description = "VENDA - Consumidor Final" ou "VENDA - Nome do Cliente"
+                destination = move.description.replace("VENDA - ", "")
+            else:
+                destination = "Descarte/Ajuste"
+
         result.append({
             "id": str(move.id),
             "productId": str(move.product_id),
             "productName": product_name,
             "branchId": str(move.branch_id),
+            "branchName": branch_name,
             "userId": str(move.user_id),
-            "type": move.type.value if hasattr(move.type, "value") else str(move.type),
+            "userName": user_name,
+            "type": type_label,
             "quantity": move.quantity,
             "unitPrice": move.unit_price,
+            "description": move.description,
+            "transferId": str(move.transfer_id) if move.transfer_id else None,
+            "origin": origin,
+            "destination": destination,
             "createdAt": move.created_at.isoformat() if move.created_at else None,
         })
 
@@ -705,6 +803,10 @@ def create_move(
     session.add(stock)
 
     # Cria o registro da movimentação
+    branch = session.get(Branch, body.branchId)
+    branch_name = branch.name if branch else ""
+    description = "Entrada manual" if body.type == MoveType.IN else "Saída manual"
+
     move = Move(
         branch_id=body.branchId,
         product_id=body.productId,
@@ -712,10 +814,37 @@ def create_move(
         type=body.type,
         quantity=qty,
         unit_price=product.unit_price,
+        description=description,
     )
     session.add(move)
+    session.flush()
+
+    # ── Log de Auditoria ──
+    type_label = "ENTRADA_ESTOQUE" if body.type == MoveType.IN else "SAIDA_ESTOQUE"
+    audit_desc = (
+        f"{description}: {qty} {product.unit_type.value if hasattr(product.unit_type, 'value') else product.unit_type} "
+        f"de {product.name} em {branch_name}"
+    )
+    log_audit(
+        session=session,
+        user_id=current_user.id,
+        action=AuditAction.CREATE,
+        entity_name="Move",
+        entity_id=str(move.id),
+        new_values={
+            "action": type_label,
+            "description": audit_desc,
+            "product": product.name,
+            "quantity": str(qty),
+            "branch": branch_name,
+        },
+    )
+
     session.commit()
     session.refresh(move)
+
+    origin = "Sistema/Fornecedor" if body.type == MoveType.IN else branch_name
+    destination = branch_name if body.type == MoveType.IN else "Descarte/Ajuste"
 
     return {
         "error": None,
@@ -724,10 +853,16 @@ def create_move(
             "productId": str(move.product_id),
             "productName": product.name,
             "branchId": str(move.branch_id),
+            "branchName": branch_name,
             "userId": str(move.user_id),
+            "userName": current_user.name,
             "type": move.type.value if hasattr(move.type, "value") else str(move.type),
             "quantity": move.quantity,
             "unitPrice": move.unit_price,
+            "description": move.description,
+            "transferId": None,
+            "origin": origin,
+            "destination": destination,
             "createdAt": move.created_at.isoformat() if move.created_at else None,
         },
     }
