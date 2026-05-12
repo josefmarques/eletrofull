@@ -16,7 +16,7 @@ export function UserProfile() {
   const { user, logout } = useAuth()
 
   // Define a cor do badge baseada na role
-  const roleConfig = {
+  const roleConfig: Record<string, { label: string; bg: string; text: string; ring: string }> = {
     admin: {
       label: "Admin Global",
       bg: "bg-green-50 dark:bg-green-900/20",
@@ -34,6 +34,12 @@ export function UserProfile() {
       bg: "bg-gray-50 dark:bg-gray-900/20",
       text: "text-gray-700 dark:text-gray-400",
       ring: "ring-gray-600/20 dark:ring-gray-800/30",
+    },
+    vendedor: {
+      label: "Vendedor de Balcão",
+      bg: "bg-purple-50 dark:bg-purple-900/20",
+      text: "text-purple-700 dark:text-purple-400",
+      ring: "ring-purple-600/20 dark:ring-purple-800/30",
     },
   }
 

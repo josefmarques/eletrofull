@@ -41,7 +41,7 @@ export async function upsertBranchAction(prevState: any, formData: FormData) {
         }
 
     } catch (error: any) {
-        return { error: error.response?.data?.error || 'Erro ao salvar filial' }
+        return { error: error.response?.data?.error || 'Erro ao salvar unidade' }
     }
 
     revalidatePath('/branches')
@@ -60,6 +60,6 @@ export async function deleteBranchAction(id: string) {
         revalidatePath('/branches')
         return { error: null }
     } catch (error: any) {
-        return { error: error.response?.data?.error || 'Erro ao deletar filial' }
+        return { error: error.response?.data?.error || 'Erro ao deletar unidade' }
     }
 }

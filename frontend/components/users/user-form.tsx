@@ -30,6 +30,7 @@ const initialState = {
 
 const ROLE_OPTIONS: { value: string; label: string }[] = [
     { value: "operator", label: "Operador de Caixa" },
+    { value: "vendedor", label: "Vendedor de Balcão" },
     { value: "manager", label: "Gerente de Loja" },
     { value: "admin", label: "Admin Global" },
 ]
@@ -39,6 +40,9 @@ export const UserForm = ({ user }: Props) => {
     const [branches, setBranches] = useState<Branch[]>([]);
     const [selectedRole, setSelectedRole] = useState<string>(user?.role || "operator");
     const [selectedBranch, setSelectedBranch] = useState<string>(user?.branchId || "");
+    const [commissionRate, setCommissionRate] = useState<string>(
+        user?.commissionRate ? String(user.commissionRate) : ""
+    );
     const [branchesLoading, setBranchesLoading] = useState(true);
 
     // Busca filiais ao montar o formulário
@@ -155,6 +159,33 @@ export const UserForm = ({ user }: Props) => {
                                 O gerente terá acesso apenas aos dados desta unidade.
                             </p>
                         )}
+                    </div>
+                )}
+
+                {/* ── Comissão (apenas Vendedor) ── */}
+                {selectedRole === "vendedor" && (
+                    <div className="space-y-2">
+                        <Label htmlFor="commissionRate">
+                            Taxa de Comissão (%){" "}
+                            <span className="text-xs text-muted-foreground">
+                                (ex: 5 para 5%)
+                            </span>
+                        </Label>
+                        <Input
+                            id="commissionRate"
+                            name="commissionRate"
+                            type="number"
+                            step="0.1"
+                            min="0"
+                            max="100"
+                            value={commissionRate}
+                            onChange={(e) => setCommissionRate(e.target.value)}
+                            placeholder="0.0"
+                        />
+                        <FieldError errors={state?.fieldErrors?.commissionRate} />
+                        <p className="text-xs text-muted-foreground">
+                            Percentual de comissão sobre o valor total das vendas realizadas.
+                        </p>
                     </div>
                 )}
 

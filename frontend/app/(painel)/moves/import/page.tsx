@@ -509,8 +509,8 @@ export default function ImportNFePage() {
     // Valida se a filial foi selecionada
     if (!branchId) {
       addToast({
-        title: "Filial nao selecionada",
-        description: "Selecione a filial para dar entrada no estoque.",
+        title: "Unidade nao selecionada",
+        description: "Selecione a unidade para dar entrada no estoque.",
         type: "error",
       });
       return;
@@ -1103,10 +1103,10 @@ export default function ImportNFePage() {
               <SelectTrigger className="w-full sm:w-[350px]">
                 <SelectValue
                   placeholder={
-                    isLoadingBranches
-                      ? "Carregando filiais..."
-                      : "Selecione a filial"
-                  }
+                                    isLoadingBranches
+                                      ? "Carregando unidades..."
+                                      : "Selecione a unidade"
+                                  }
                 />
               </SelectTrigger>
               <SelectContent>
@@ -1120,7 +1120,7 @@ export default function ImportNFePage() {
             {!branchId && !isLoadingBranches && (
               <p className="text-xs text-amber-600 mt-1.5 flex items-center gap-1">
                 <AlertCircle className="h-3 w-3" />
-                Selecione a filial para habilitar a conclusao
+                Selecione a unidade para habilitar a conclusao
               </p>
             )}
           </CardContent>

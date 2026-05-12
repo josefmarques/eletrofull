@@ -138,3 +138,97 @@ def _run_migrations():
         else:
             print("[migration] ⚠️  UNIQUE unique_cpf_cnpj AUSENTE!")
             print("[migration] ⚠️  Execute: docker exec -i postgres psql -U zemarques -d estoque-db < backend/migration_fisica.sql")
+
+        # ── Migração 5: commission_rate na users ──
+        result = conn.execute(text(
+            "SELECT column_name FROM information_schema.columns "
+            "WHERE table_name='users' AND column_name='commission_rate'"
+        ))
+        if not result.fetchone():
+            conn.execute(text(
+                "ALTER TABLE users ADD COLUMN commission_rate FLOAT NOT NULL DEFAULT 0.0;"
+            ))
+            conn.commit()
+            print("[migration] ✅ users.commission_rate adicionada")
+
+        # ── Migração 6: seller_id na sales ──
+        result = conn.execute(text(
+            "SELECT column_name FROM information_schema.columns "
+            "WHERE table_name='sales' AND column_name='seller_id'"
+        ))
+        if not result.fetchone():
+            conn.execute(text(
+                "ALTER TABLE sales ADD COLUMN seller_id UUID REFERENCES users(id);"
+            ))
+            conn.commit()
+            print("[migration] ✅ sales.seller_id adicionada")
+
+        # ── Migração 7: commission_value na sales ──
+        result = conn.execute(text(
+            "SELECT column_name FROM information_schema.columns "
+            "WHERE table_name='sales' AND column_name='commission_value'"
+        ))
+        if not result.fetchone():
+            conn.execute(text(
+                "ALTER TABLE sales ADD COLUMN commission_value DECIMAL(12,2) NOT NULL DEFAULT 0.0;"
+            ))
+            conn.commit()
+            print("[migration] ✅ sales.commission_value adicionada")
+
+        # ── Migração 8: Índice para seller_id na sales ──
+        result = conn.execute(text(
+            "SELECT indexname FROM pg_indexes "
+            "WHERE tablename='sales' AND indexname='ix_sales_seller_id'"
+        ))
+        if not result.fetchone():
+            conn.execute(text("CREATE INDEX ix_sales_seller_id ON sales(seller_id);"))
+            conn.commit()
+            print("[migration] ✅ ix_sales_seller_id criado")
+
+        # ── Migração 9: Tabela quotes ──
+        conn.execute(text(
+            "SELECT to_regclass('quotes'::text);"
+        ))
+        result = conn.execute(text("""
+            SELECT EXISTS (
+                SELECT FROM information_schema.tables 
+                WHERE table_name = 'quotes'
+            )
+        """))
+        if not result.fetchone()[0]:
+            conn.execute(text("""
+                CREATE TABLE quotes (
+                    id UUID PRIMARY KEY,
+                    branch_id UUID NOT NULL REFERENCES branches(id),
+                    user_id UUID NOT NULL REFERENCES users(id),
+                    customer_id UUID REFERENCES customers(id),
+                    seller_id UUID REFERENCES users(id),
+                    gross_value DECIMAL(12,2) NOT NULL,
+                    discount DECIMAL(12,2) NOT NULL DEFAULT 0,
+                    total_value DECIMAL(12,2) NOT NULL,
+                    status VARCHAR NOT NULL DEFAULT 'pendente',
+                    expires_at TIMESTAMP NOT NULL,
+                    observations TEXT,
+                    created_at TIMESTAMP DEFAULT NOW(),
+                    updated_at TIMESTAMP DEFAULT NOW()
+                );
+                CREATE TABLE quote_items (
+                    id UUID PRIMARY KEY,
+                    quote_id UUID NOT NULL REFERENCES quotes(id),
+                    product_id UUID NOT NULL REFERENCES products(id),
+                    product_name VARCHAR(255),
+                    quantity INTEGER NOT NULL,
+                    unit_price DECIMAL(12,2) NOT NULL,
+                    subtotal DECIMAL(12,2) NOT NULL
+                );
+                CREATE INDEX idx_quotes_status ON quotes(status);
+                CREATE INDEX idx_quotes_seller_id ON quotes(seller_id);
+                CREATE INDEX idx_quotes_branch_id ON quotes(branch_id);
+                CREATE INDEX idx_quote_items_quote_id ON quote_items(quote_id);
+            """))
+            conn.commit()
+            print("[migration] ✅ Tabelas quotes e quote_items criadas")
+        else:
+            print("[migration] ✅ quotes e quote_items já existem")
+
+        conn.close()

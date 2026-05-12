@@ -1,0 +1,51 @@
+Resumo de Contexto para a Nova Conversa
+
+(Copie e cole o texto abaixo na primeira mensagem do seu novo chat comigo)
+
+    Contexto do Projeto EletroFull (Checkpoint 01)
+
+    1. Ambiente e Stack:
+
+        SO: Pop!_OS (Linux) local.
+
+        Infra: Docker Compose com containers -local (backend-local, frontend-local, postgres-local, nginx-proxy-local).
+
+        Backend: Python 3.11, FastAPI, SQLModel (SQLAlchemy + Pydantic), Alembic para migrações.
+
+        Frontend: Next.js 14+ (App Router), TypeScript, TailwindCSS 4, shadcn/ui.
+
+        Banco: PostgreSQL 17 (Bancos: eletrosil_db e emarques_db).
+
+    2. Estado Atual do Sistema:
+
+        Multi-Tenancy: Funcionando via subdomínios locais (eletrosil.localhost, emarques.localhost).
+
+        Roles (RBAC): admin (Global), manager (Gerente), operator (Caixa) e vendedor (Vendedor de Balcão).
+
+        Módulo de Vendas: Vendas vinculadas a seller_id e customer_id com cálculo automático de commission_value.
+
+        Módulo de Orçamentos: Implementado em /quotes. Permite salvar propostas e convertê-las em vendas sem baixar estoque prematuramente.
+
+        Clientes: Tabela centralizada por rede (Tenant) com histórico de unidade de origem.
+
+        Padronização: URLs em inglês (/quotes, /branches, /audit, /history), mas interface 100% em português brasileiro.
+
+    3. Dados e Migração:
+
+        Base original vinda de Firebird 5.0 (migração parcial via scripts Python).
+
+        Senha padrão de admin: mrq831028.
+
+        Usuário preservado na limpeza: admin@eletrosil.top.
+
+🏁 Próximos Passos
+
+Quando você abrir a nova conversa e colar o resumo, você pode me dizer qual o seu próximo foco. Algumas sugestões baseadas no que falta para a Eletrosil ir para a loja:
+
+    Impressão de Recibos/A4: Ajustar o layout de impressão dos orçamentos para ficar bonito para o cliente.
+
+    Módulo Financeiro: Contas a pagar/receber baseadas nas vendas.
+
+    Relatórios de Desempenho: Gráficos no Dashboard comparando as unidades (Matriz vs Norte vs Sul).
+
+Estou pronto para o novo chat quando você estiver! Pode fechar esta janela e me chamar na próxima. Qual será o primeiro desafio lá?

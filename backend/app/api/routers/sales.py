@@ -16,6 +16,7 @@ from app.models.moves import Move
 from app.models.enums import MoveType, PaymentMethod
 from app.models.payments import Payment
 from app.models.cash_sessions import CashSession
+from app.models.quotes import Quote
 from app.api.dependencies import get_current_user
 from app.models.users import User
 from app.models.audit import AuditAction
@@ -28,13 +29,19 @@ router = APIRouter(tags=["sales"])
 
 
 def _get_sale_names(sale: Sale, session: Session) -> dict:
-    """Retorna userName e customerName para uma venda."""
+    """Retorna userName, sellerName e customerName para uma venda."""
     user_name = None
+    seller_name = None
     customer_name = None
 
     user = session.get(User, sale.user_id)
     if user:
         user_name = user.name
+
+    if sale.seller_id:
+        seller = session.get(User, sale.seller_id)
+        if seller:
+            seller_name = seller.name
 
     if sale.customer_id:
         customer = session.get(Customer, sale.customer_id)
@@ -43,8 +50,16 @@ def _get_sale_names(sale: Sale, session: Session) -> dict:
 
     return {
         "userName": user_name,
+        "sellerName": seller_name,
         "customerName": customer_name,
     }
+
+
+def _calculate_commission(total_value: Decimal, seller: User) -> Decimal:
+    """Calcula o valor da comissão com base no total da venda e taxa do vendedor."""
+    if seller.commission_rate > 0:
+        return total_value * Decimal(str(seller.commission_rate)) / Decimal("100")
+    return Decimal("0")
 
 
 def _validate_cash_session_open(branch_id, db_session, current_user):
@@ -93,6 +108,7 @@ class SaleItemPayload(BaseModel):
 class SaleCreate(BaseModel):
     branchId: Optional[UUID] = None  # Para Admin Global informar a filial
     customerId: Optional[UUID] = None
+    sellerId: Optional[UUID] = None  # Vendedor responsável pela comissão
     grossValue: str | int | float
     totalValue: str | int | float
     discount: str | int | float = "0.00"
@@ -120,6 +136,9 @@ class PDVCheckoutPayload(BaseModel):
     - Cria os registros de SaleItem com subtotal calculado
     """
     branch_id: UUID
+    customer_id: Optional[UUID] = None  # Cliente associado
+    seller_id: Optional[UUID] = None  # Vendedor responsável pela comissão
+    quote_id: Optional[UUID] = None  # Orçamento de origem (se vier do módulo de orçamentos)
     payment_method: str  # PIX, CREDIT, DEBIT, CASH (mapeado para PaymentMethod)
     discount_amount: str | int | float = "0.00"
     items: List[PDVCheckoutItem]
@@ -131,6 +150,7 @@ class PDVCheckoutPayload(BaseModel):
 @router.get("/sales")
 def list_sales(
     branchId: Optional[UUID] = Query(None, alias="branchId"),
+    sellerId: Optional[UUID] = Query(None, alias="sellerId"),
     limit: int = Query(10, ge=1, le=100),
     offset: int = Query(0, ge=0),
     session: Session = Depends(get_session),
@@ -141,6 +161,8 @@ def list_sales(
 
     if branchId:
         query = query.where(Sale.branch_id == branchId)
+    if sellerId:
+        query = query.where(Sale.seller_id == sellerId)
 
     query = query.offset(offset).limit(limit)
     sales = session.exec(query).all()
@@ -186,11 +208,14 @@ def list_sales(
             "branchId": str(sale.branch_id),
             "userId": str(sale.user_id),
             "userName": names["userName"],
+            "sellerId": str(sale.seller_id) if sale.seller_id else None,
+            "sellerName": names["sellerName"],
             "customerId": str(sale.customer_id) if sale.customer_id else None,
             "customerName": names["customerName"],
             "grossValue": sale.gross_value,
             "discount": sale.discount,
             "totalValue": sale.total_value,
+            "commissionValue": str(sale.commission_value),
             "paymentMethod": sale.payment_method,
             "paymentStatus": sale.payment_status,
             "observations": sale.observations,
@@ -259,11 +284,14 @@ def get_sale(
             "branchId": str(sale.branch_id),
             "userId": str(sale.user_id),
             "userName": names["userName"],
+            "sellerId": str(sale.seller_id) if sale.seller_id else None,
+            "sellerName": names["sellerName"],
             "customerId": str(sale.customer_id) if sale.customer_id else None,
             "customerName": names["customerName"],
             "grossValue": sale.gross_value,
             "discount": sale.discount,
             "totalValue": sale.total_value,
+            "commissionValue": str(sale.commission_value),
             "paymentMethod": sale.payment_method,
             "paymentStatus": sale.payment_status,
             "observations": sale.observations,
@@ -273,6 +301,81 @@ def get_sale(
             "payments": payments_data,
         },
     }
+
+
+# ─── GET /sales/commissions — Relatório de Comissões ────────────────────────
+
+@router.get("/sales/commissions")
+def get_commission_report(
+        startDate: Optional[str] = Query(None, alias="startDate"),
+        endDate: Optional[str] = Query(None, alias="endDate"),
+        sellerId: Optional[UUID] = Query(None, alias="sellerId"),
+        branchId: Optional[UUID] = Query(None, alias="branchId"),
+        session: Session = Depends(get_session),
+        current_user: User = Depends(get_current_user),
+):
+        """
+        Retorna relatório de comissões acumuladas por vendedor em um intervalo.
+    
+        Se nenhuma data for informada, retorna do mês atual.
+        """
+        from sqlmodel import func
+    
+        now = datetime.now()
+
+        if not startDate:
+            dt_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        else:
+            try:
+                dt_start = datetime.fromisoformat(startDate)
+            except ValueError:
+                dt_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+
+        if not endDate:
+            dt_end = now.replace(hour=23, minute=59, second=59, microsecond=999999)
+        else:
+            try:
+                dt_end = datetime.fromisoformat(endDate)
+            except ValueError:
+                dt_end = now.replace(hour=23, minute=59, second=59, microsecond=999999)
+
+        # Query base: vendas com seller_id no período
+        query = (
+            select(
+                Sale.seller_id,
+                func.count(Sale.id).label("total_sales"),
+                func.sum(Sale.total_value).label("total_value"),
+                func.sum(Sale.commission_value).label("total_commission"),
+            )
+            .where(Sale.seller_id.is_not(None))
+            .where(Sale.created_at >= dt_start)
+            .where(Sale.created_at <= dt_end)
+            .group_by(Sale.seller_id)
+        )
+
+        if sellerId:
+            query = query.where(Sale.seller_id == sellerId)
+        if branchId:
+            query = query.where(Sale.branch_id == branchId)
+
+        rows = session.exec(query).all()
+
+        result = []
+        for seller_id, total_sales, total_value, total_commission in rows:
+            seller = session.get(User, seller_id)
+            seller_name = seller.name if seller else "Vendedor removido"
+            result.append({
+                "seller_id": str(seller_id),
+                "seller_name": seller_name,
+                "total_sales": int(total_sales),
+                "total_value": float(total_value) if total_value else 0.0,
+                "total_commission": float(total_commission) if total_commission else 0.0,
+            })
+
+        return {
+            "error": None,
+            "data": result,
+        }
 
 
 @router.post("/sales", status_code=status.HTTP_201_CREATED)
@@ -297,17 +400,17 @@ def create_sale(
         print(f"[create_sale] Erro: Admin {current_user.id} ({current_user.name}) não informou branchId no body")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Filial não informada. Admin deve enviar branchId no corpo da requisição.",
+            detail="Unidade nao informada. Admin deve enviar branchId no corpo da requisicao.",
         )
 
     # Verifica se a filial existe
     from app.models.branches import Branch
     branch = session.get(Branch, branch_id)
     if not branch:
-        print(f"[create_sale] Erro: Filial {branch_id} não encontrada")
+        print(f"[create_sale] Erro: Unidade {branch_id} nao encontrada")
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Filial informada não encontrada",
+            detail="Unidade informada nao encontrada",
         )
 
     print(f"[create_sale] Venda iniciada — user={current_user.name} (admin={current_user.is_admin}), branch={branch.name} ({branch_id}), itens={len(body.items)}")
@@ -334,7 +437,7 @@ def create_sale(
         if not stock:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Produto {product.name} sem estoque nesta filial",
+                detail=f"Produto {product.name} sem estoque nesta unidade",
             )
 
         if Decimal(str(item_payload.quantity)) > stock.quantity:
@@ -383,14 +486,24 @@ def create_sale(
     # Determina o método principal para o campo payment_method da Sale
     primary_method = payments_to_process[0]["method"].value
 
+    # ── CÁLCULO DA COMISSÃO ──
+    commission_value = Decimal("0")
+    seller_id = body.sellerId
+    if seller_id:
+        seller = session.get(User, seller_id)
+        if seller:
+            commission_value = _calculate_commission(total_value, seller)
+
     # Cria a venda
     sale = Sale(
         branch_id=branch_id,
         user_id=current_user.id,
         customer_id=body.customerId,
+        seller_id=seller_id,
         gross_value=Decimal(str(body.grossValue)),
         discount=Decimal(str(body.discount)),
         total_value=total_value,
+        commission_value=commission_value,
         payment_method=primary_method,
         payment_status="completed",
     )
@@ -505,11 +618,14 @@ def create_sale(
             "branchId": str(sale.branch_id),
             "userId": str(sale.user_id),
             "userName": names["userName"],
+            "sellerId": str(sale.seller_id) if sale.seller_id else None,
+            "sellerName": names["sellerName"],
             "customerId": str(sale.customer_id) if sale.customer_id else None,
             "customerName": names["customerName"],
             "grossValue": sale.gross_value,
             "discount": sale.discount,
             "totalValue": sale.total_value,
+            "commissionValue": str(sale.commission_value),
             "paymentMethod": sale.payment_method,
             "paymentStatus": sale.payment_status,
             "createdAt": sale.created_at.isoformat() if sale.created_at else None,
@@ -564,7 +680,7 @@ def pdv_checkout(
     if not branch:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Filial não encontrada",
+            detail="Unidade nao encontrada",
         )
 
     # ── Valida se há sessão de caixa aberta para a filial ──
@@ -590,7 +706,7 @@ def pdv_checkout(
         if not stock:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Produto '{product.name}' sem estoque nesta filial",
+                detail=f"Produto '{product.name}' sem estoque nesta unidade",
             )
 
         qty = Decimal(str(item.quantity))
@@ -633,13 +749,24 @@ def pdv_checkout(
             detail=f"Método de pagamento inválido: '{body.payment_method}'. Use: pix, credit, debit, cash",
         )
 
+    # ── CÁLCULO DA COMISSÃO ──
+    commission_value = Decimal("0")
+    seller_id = body.seller_id
+    if seller_id:
+        seller = session.get(User, seller_id)
+        if seller:
+            commission_value = _calculate_commission(total_value, seller)
+
     # ── Cria a venda ──
     sale = Sale(
         branch_id=branch_id,
         user_id=current_user.id,
+        customer_id=body.customer_id,
+        seller_id=seller_id,
         gross_value=gross_value,
         discount=discount_value,
         total_value=total_value,
+        commission_value=commission_value,
         payment_method=payment_method_enum.value,
         payment_status="completed",
     )
@@ -670,6 +797,12 @@ def pdv_checkout(
         session.add(stock)
 
         # Move (type='out') com descrição "VENDA"
+        desc_client = "Consumidor Final"
+        if body.customer_id:
+            cust = session.get(Customer, body.customer_id)
+            if cust:
+                desc_client = cust.name
+        
         move = Move(
             branch_id=branch_id,
             product_id=product.id,
@@ -677,7 +810,7 @@ def pdv_checkout(
             type=MoveType.OUT,
             quantity=qty,
             unit_price=product.unit_price,
-            description="VENDA - Consumidor Final",
+            description=f"VENDA - {desc_client}",
         )
         session.add(move)
 
@@ -701,9 +834,27 @@ def pdv_checkout(
             "total": str(total_value),
             "branch": branch.name,
             "items_count": len(body.items),
-            "customer": "Consumidor Final",
+            "customer": desc_client,
         },
     )
+
+    # ── Se veio de um orçamento, atualiza o status ──
+    if body.quote_id:
+        quote = session.get(Quote, body.quote_id)
+        if quote:
+            if quote.status != "pendente":
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Orçamento já está com status '{quote.status}'.",
+                )
+            quote.status = "convertido"
+            # Armazena o ID da venda nas observações do orçamento
+            if quote.observations:
+                quote.observations += f" | Convertido na venda {sale.id}"
+            else:
+                quote.observations = f"Convertido na venda {sale.id}"
+            quote.updated_at = datetime.now()
+            session.add(quote)
 
     # ── Commit ──
     session.commit()
@@ -729,10 +880,14 @@ def pdv_checkout(
             "branchId": str(sale.branch_id),
             "userId": str(sale.user_id),
             "userName": names["userName"],
+            "sellerId": str(sale.seller_id) if sale.seller_id else None,
+            "sellerName": names["sellerName"],
+            "customerId": str(sale.customer_id) if sale.customer_id else None,
             "customerName": names["customerName"],
             "grossValue": str(gross_value),
             "discount": str(discount_value),
             "totalValue": str(total_value),
+            "commissionValue": str(commission_value),
             "paymentMethod": payment_method_enum.value,
             "paymentStatus": "completed",
             "createdAt": sale.created_at.isoformat() if sale.created_at else None,

@@ -1,6 +1,6 @@
-"use client"
+"use client";
 
-import { CalendarSearch, Inbox, LayoutDashboard, Search, User as UserIcon, Receipt, DollarSign, Shield, Store, Building2, LogOut } from "lucide-react"
+import { CalendarSearch, Inbox, LayoutDashboard, Search, User as UserIcon, Receipt, DollarSign, Shield, Store, Building2, LogOut, Users, FileText } from "lucide-react"
 
 import {
   Sidebar,
@@ -28,19 +28,21 @@ type Props = {
 }
 
 const navItems = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, roles: ["admin", "manager", "operator", "vendedor"] },
   { group: "Gestão" },
-  { href: "/categories", label: "Categorias", icon: Search },
-  { href: "/branches", label: "Unidades", icon: Building2, adminOnly: true },
-  { href: "/users", label: "Usuários", icon: UserIcon, adminOnly: true },
-  { href: "/auditoria", label: "Auditoria", icon: Shield, adminOnly: true },
+  { href: "/categories", label: "Categorias", icon: Search, roles: ["admin", "manager", "vendedor"] },
+  { href: "/customers", label: "Clientes", icon: Users, roles: ["admin", "manager", "vendedor"] },
+  { href: "/branches", label: "Unidades", icon: Building2, roles: ["admin"] },
+  { href: "/users", label: "Usuários", icon: UserIcon, roles: ["admin"] },
+  { href: "/audit", label: "Auditoria", icon: Shield, roles: ["admin"] },
   { group: "Estoque" },
-  { href: "/products", label: "Produtos", icon: Inbox },
-  { href: "/moves", label: "Entrada/Saída", icon: CalendarSearch },
+  { href: "/products", label: "Produtos", icon: Inbox, roles: ["admin", "manager", "operator", "vendedor"] },
+  { href: "/moves", label: "Entrada/Saída", icon: CalendarSearch, roles: ["admin", "manager", "operator", "vendedor"] },
   { group: "Vendas" },
-  { href: "/caixa", label: "Caixa", icon: DollarSign },
-  { href: "/pdv", label: "PDV", icon: CalendarSearch },
-  { href: "/sales", label: "Histórico", icon: Receipt },
+  { href: "/cashier", label: "Caixa", icon: DollarSign, roles: ["admin", "manager", "operator", "vendedor"] },
+  { href: "/pdv", label: "PDV", icon: CalendarSearch, roles: ["admin", "manager", "operator", "vendedor"] },
+  { href: "/quotes", label: "Orçamentos", icon: FileText, roles: ["admin", "manager", "vendedor"] },
+  { href: "/sales", label: "Histórico", icon: Receipt, roles: ["admin", "manager", "operator", "vendedor"] },
 ]
 
 export function AppSidebar({ branches = [] }: Props) {
@@ -117,7 +119,7 @@ export function AppSidebar({ branches = [] }: Props) {
                   </SidebarGroupContent>
                 </SidebarGroup>
               )
-            } else if (!item.adminOnly || user?.role === 'admin' || user?.isAdmin) {
+            } else if (!item.roles || item.roles.includes(user?.role)) {
               currentGroup.push(
                 <SidebarMenuItem key={item.href}>
                   <Link href={`${item.href}${queryParams}`}>

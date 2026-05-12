@@ -25,6 +25,7 @@ class UserResponse(BaseModel):
     avatar: str | None = None
     isAdmin: bool = False
     role: str = "operator"
+    commissionRate: float = 0.0
     branchId: str | None = None
     createdAt: str | None = None
     updatedAt: str | None = None
@@ -48,6 +49,7 @@ def _build_user_response(user: User, token: str) -> dict:
         "avatar": user.avatar,
         "isAdmin": user.is_admin,
         "role": user.role,
+        "commissionRate": user.commission_rate,
         "branchId": str(user.branch_id) if user.branch_id else None,
         "createdAt": user.created_at.isoformat() if user.created_at else None,
         "updatedAt": user.updated_at.isoformat() if user.updated_at else None,
@@ -113,6 +115,7 @@ def get_me(current_user: User = Depends(get_current_user)):
             "avatar": current_user.avatar,
             "isAdmin": current_user.is_admin,
             "role": current_user.role,
+            "commissionRate": current_user.commission_rate,
             "branchId": str(current_user.branch_id) if current_user.branch_id else None,
             "createdAt": current_user.created_at.isoformat() if current_user.created_at else None,
             "updatedAt": current_user.updated_at.isoformat() if current_user.updated_at else None,

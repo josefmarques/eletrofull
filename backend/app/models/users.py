@@ -20,6 +20,7 @@ class User(SQLModel, table=True):
     is_admin: bool = Field(default=False, nullable=False)
     role: str = Field(default="operator", nullable=False)
     token: Optional[str] = Field(default=None)
+    commission_rate: float = Field(default=0.0, nullable=False)  # % de comissão do vendedor (ex: 5.0 = 5%)
     deleted_at: Optional[datetime] = Field(default=None)
     created_at: datetime = Field(default_factory=br_now_naive, nullable=False)
     updated_at: datetime = Field(default_factory=br_now_naive, nullable=False)

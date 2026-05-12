@@ -16,9 +16,11 @@ class Sale(SQLModel, table=True):
     branch_id: UUID = Field(nullable=False, foreign_key="branches.id")
     user_id: UUID = Field(nullable=False, foreign_key="users.id")
     customer_id: Optional[UUID] = Field(default=None, foreign_key="customers.id")
+    seller_id: Optional[UUID] = Field(default=None, foreign_key="users.id")  # Vendedor responsável pela comissão
     gross_value: Decimal = Field(nullable=False, max_digits=12, decimal_places=2)
     discount: Decimal = Field(default="0", max_digits=12, decimal_places=2)
     total_value: Decimal = Field(nullable=False, max_digits=12, decimal_places=2)
+    commission_value: Decimal = Field(default="0", max_digits=12, decimal_places=2)  # Comissão gerada na venda
     payment_method: str = Field(default="cash", nullable=False)
     payment_status: str = Field(default="pending", nullable=False)
     observations: Optional[str] = Field(default=None)

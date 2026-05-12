@@ -17,6 +17,7 @@ const ROLE_MAP: Record<string, { label: string; variant: "default" | "secondary"
 	admin: { label: "Admin Global", variant: "destructive" },
 	manager: { label: "Gerente", variant: "default" },
 	operator: { label: "Operador", variant: "secondary" },
+	vendedor: { label: "Vendedor", variant: "outline" },
 };
 
 export const UserItem = ({ user }: Props) => {

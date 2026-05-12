@@ -130,6 +130,9 @@ require_manager = RoleChecker(["admin", "manager"])
 #: Operator — operador de caixa (PDV)
 require_operator = RoleChecker(["admin", "manager", "operator"])
 
+#: Vendedor — acesso a PDV, Clientes e Produtos
+require_vendor = RoleChecker(["admin", "manager", "operator", "vendedor"])
+
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Isolamento Multi-Filial
@@ -142,7 +145,7 @@ def verify_branch_access(current_user: User, requested_branch_id: Optional[UUID]
 
     Regras:
     - **Admin** (`role == "admin"`): acesso irrestrito a qualquer filial.
-    - **Manager/Operator** (`role != "admin"`): só pode acessar a própria filial
+    - **Manager/Operator/Vendedor** (`role != "admin"`): só pode acessar a própria filial
       (`current_user.branch_id`). Se `requested_branch_id` for diferente,
       levanta HTTP 403.
     - Se `requested_branch_id` for `None`, o acesso é permitido (a query

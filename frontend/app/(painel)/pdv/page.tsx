@@ -30,14 +30,19 @@ import {
   CreditCard,
   Landmark,
   Keyboard,
+  BadgePercent,
+  FileText,
+  XCircle,
 } from "lucide-react";
 import { productService } from "@/services/product";
 import { customerService } from "@/services/customer";
 import { saleService } from "@/services/sale";
+import { quoteService } from "@/services/quote";
 import { cashSessionService } from "@/services/cash-session";
 import { branchClientService } from "@/services/branch-client";
 import { Product } from "@/types/product";
-import { Customer } from "@/types/sale";
+import { Customer, CommissionReportItem } from "@/types/sale";
+import { User as UserType } from "@/types/user";
 import { getClientApi } from "@/lib/client-api";
 import {
   Command,
@@ -86,6 +91,7 @@ export default function PDVPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const urlBranchId = searchParams.get("branch");
+  const urlQuoteId = searchParams.get("quote_id");
 
   const {
     state,
@@ -122,6 +128,7 @@ export default function PDVPage() {
   const [showCustomerDialog, setShowCustomerDialog] = useState(false);
 
   const [finalizing, setFinalizing] = useState(false);
+  const [savingQuote, setSavingQuote] = useState(false);
   
   const [saleDone, setSaleDone] = useState<{
     id: string;
@@ -130,6 +137,7 @@ export default function PDVPage() {
     items: Array<{ productName: string; quantity: number; unitPrice: string; subtotal: string }>;
     payments: Array<{ method: string; amount: string }>;
     userName?: string;
+    sellerName?: string;
   } | null>(null);
 
   const [userBranchId, setUserBranchId] = useState<string | null>(null);
@@ -137,6 +145,17 @@ export default function PDVPage() {
   const [branches, setBranches] = useState<{ id: string; name: string }[]>([]);
   const [selectedBranchId, setSelectedBranchId] = useState<string | null>(null);
   const [hasOpenSession, setHasOpenSession] = useState<boolean | null>(null);
+
+  // ── Dados do orçamento carregado ──
+  const [loadingQuote, setLoadingQuote] = useState(false);
+  const [quoteLoaded, setQuoteLoaded] = useState(false);
+  const quoteLoadedRef = useRef(false);   // trava anti-loop
+
+  // ── Vendedor responsável pela comissão ──
+  const [sellers, setSellers] = useState<UserType[]>([]);
+  const [selectedSeller, setSelectedSeller] = useState<string | null>(null);
+  const [loadingSellers, setLoadingSellers] = useState(false);
+  const [showSellerPopover, setShowSellerPopover] = useState(false);
 
   // Pagamento rápido — método selecionado e se o split está ativo
   const [quickPaymentMethod, setQuickPaymentMethod] = useState<string>("cash");
@@ -215,6 +234,97 @@ export default function PDVPage() {
     return () => clearTimeout(timer);
   }, [searchTerm, isAdmin, selectedBranchId, userBranchId]);
 
+  // ── Busca de vendedores (role='vendedor') ──
+  useEffect(() => {
+    const fetchSellers = async () => {
+      setLoadingSellers(true);
+      try {
+        const api = getClientApi();
+        const response = await api.get('/users', {
+          params: { limit: 100, includeInactive: false }
+        });
+        const allUsers: UserType[] = response.data?.data || [];
+        // Filtra apenas vendedores
+        const vendors = allUsers.filter(u => u.role === 'vendedor');
+        setSellers(vendors);
+        if (vendors.length === 1) {
+          setSelectedSeller(vendors[0].id);
+        }
+      } catch (err) {
+        console.error('[PDV] Error fetching sellers:', err);
+      } finally {
+        setLoadingSellers(false);
+      }
+    };
+    fetchSellers();
+  }, []);
+
+  // ── Carrega dados do orçamento quando quote_id está na URL ──
+  // usa ref como trava para rodar APENAS UMA VEZ, evitando loop infinito
+  useEffect(() => {
+    if (!urlQuoteId || quoteLoadedRef.current) return;
+    quoteLoadedRef.current = true;  // trava: nunca mais roda
+    
+    const loadQuote = async () => {
+      setLoadingQuote(true);
+      try {
+        const res = await quoteService.getQuoteById(urlQuoteId);
+        if (res.error) {
+          addToast({ title: "Erro ao carregar orçamento", description: res.error, type: "error" });
+          return;
+        }
+        if (!res.data) return;
+
+        const quote = res.data;
+        
+        // Limpa o carrinho atual
+        clearSale();
+        
+        // Carrega cliente
+        if (quote.customerId && quote.customerName) {
+          setCustomer({
+            id: quote.customerId,
+            name: quote.customerName,
+          });
+        }
+        
+        // Carrega vendedor
+        if (quote.sellerId) {
+          setSelectedSeller(quote.sellerId);
+        }
+        
+        // Carrega desconto
+        if (quote.discount && parseFloat(quote.discount) > 0) {
+          setDiscount(quote.discount);
+        }
+        
+        // Carrega itens
+        for (const item of quote.items) {
+          addItem({
+            productId: item.productId,
+            quantity: item.quantity,
+            unitPrice: item.unitPrice,
+            subtotal: item.subtotal,
+            name: item.productName || item.productId,
+          });
+        }
+        
+        setQuoteLoaded(true);
+        addToast({
+          title: "Orçamento carregado",
+          description: `Itens de "${quote.customerName || 'Consumidor'}" foram carregados no carrinho.`,
+          type: "success",
+        });
+      } catch (err: any) {
+        addToast({ title: "Erro ao carregar orçamento", description: err.message, type: "error" });
+      } finally {
+        setLoadingQuote(false);
+      }
+    };
+    
+    loadQuote();
+  }, [urlQuoteId]); // dependências mínimas: só urlQuoteId dispara; a ref trava re-execução
+
   // ── Busca de clientes ──
   useEffect(() => {
     const timer = setTimeout(async () => {
@@ -230,6 +340,44 @@ export default function PDVPage() {
     }, 300);
     return () => clearTimeout(timer);
   }, [customerSearch]);
+
+  // ── Salvar como Orcamento ──
+  const handleSaveQuote = async () => {
+    if (state.items.length === 0) {
+      addToast({ title: "Carrinho vazio", type: "error" });
+      return;
+    }
+    setSavingQuote(true);
+    try {
+      const payload = {
+        branchId: selectedBranchId || "",
+        customerId: state.customer?.id || undefined,
+        sellerId: selectedSeller || undefined,
+        grossValue: subtotal.toFixed(2),
+        totalValue: total.toFixed(2),
+        discount: parseFloat(state.discount) || 0,
+        items: state.items.map((item) => ({
+          productId: item.productId,
+          quantity: item.quantity,
+          unitPrice: parseFloat(item.unitPrice),
+          subtotal: parseFloat(item.subtotal),
+          name: item.name,
+        })),
+      };
+      const res = await quoteService.createQuote(payload);
+      if (res.error) {
+        addToast({ title: "Erro ao salvar orçamento", description: res.error, type: "error" });
+      } else {
+        addToast({ title: "Orçamento gerado com sucesso!", type: "success" });
+        clearSale();
+        router.push('/quotes');
+      }
+    } catch (err: any) {
+      addToast({ title: "Erro inesperado", description: err.message, type: "error" });
+    } finally {
+      setSavingQuote(false);
+    }
+  };
 
   // ── Auto-foco no input de busca ──
   useEffect(() => {
@@ -383,8 +531,11 @@ export default function PDVPage() {
         ? mapMethod(state.payments[0].method) 
         : "cash"; 
 
-      const payload = {
+      const payload: any = {
         branch_id: selectedBranchId || "",
+        customer_id: state.customer?.id || undefined,
+        seller_id: selectedSeller || undefined,
+        quote_id: urlQuoteId || undefined,  // Se veio de um orçamento
         payment_method: primaryMethod,
         discount_amount: parseFloat(state.discount) || 0,
         items: state.items.map((item) => ({
@@ -414,6 +565,7 @@ export default function PDVPage() {
             ? state.payments.map((p) => ({ method: p.method, amount: p.amount }))
             : [{ method: primaryMethod, amount: total.toString() }],
           userName: result.data.userName,
+          sellerName: result.data.sellerName,
         });
         addToast({ title: "Venda finalizada!", type: "success", description: `R$ ${parseFloat(result.data.totalValue?.toString() || "0").toFixed(2)}` });
       }
@@ -422,7 +574,7 @@ export default function PDVPage() {
     } finally {
       setFinalizing(false);
     }
-  }, [state, userBranchId, total, hasOpenSession, addToast, isAdmin, selectedBranchId]); // <== totalPaid removido das dependências para evitar ciclos
+  }, [state, userBranchId, total, hasOpenSession, addToast, isAdmin, selectedBranchId, urlQuoteId]); // <== totalPaid removido das dependências para evitar ciclos
 
   // CORREÇÃO 3: O useRef DEVE ficar exatamente aqui, e não antes da função existir!
   const handleFinalizeRef = useRef(handleFinalize);
@@ -433,6 +585,7 @@ export default function PDVPage() {
     setSaleDone(null);
     setShowSplitPanel(false);
     setSplitAmount("");
+    quoteLoadedRef.current = false;  // permite novo carregamento de orçamento
     setTimeout(() => productInputRef.current?.focus(), 100);
   };
 
@@ -456,6 +609,7 @@ export default function PDVPage() {
             <p>Nº {String(saleDone.receiptNumber || "").padStart(6, "0")}</p>
             <p>Data: {formatDateTimeBR(new Date().toISOString())}</p>
             <p>Operador: {saleDone.userName || "—"}</p>
+            {saleDone.sellerName && <p>Vendedor: {saleDone.sellerName}</p>}
             <p>Cliente: {state.customer?.name || "Consumidor Final"}</p>
             {state.customer?.cpfCnpj && <p>CPF/CNPJ: {state.customer.cpfCnpj}</p>}
           </div>
@@ -602,6 +756,38 @@ export default function PDVPage() {
 
   return (
     <div className="h-[calc(100vh-76px)] flex flex-col">
+      {/* ─── Banner de orçamento carregado ─── */}
+      {loadingQuote && (
+        <div className="flex items-center gap-2 mb-2 px-4 py-2 bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800 rounded-lg text-sm text-purple-700 dark:text-purple-300">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Carregando orçamento...
+        </div>
+      )}
+      {quoteLoaded && !loadingQuote && (
+        <div className="flex items-center justify-between gap-2 mb-2 px-4 py-2 bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800 rounded-lg text-sm">
+          <div className="flex items-center gap-2 text-purple-700 dark:text-purple-300">
+            <FileText className="h-4 w-4" />
+            <span>Orçamento carregado — revise os itens, escolha a forma de pagamento e finalize a venda</span>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 text-xs text-purple-600 hover:text-purple-800 hover:bg-purple-100 dark:hover:bg-purple-900/50"
+            onClick={() => {
+              clearSale();
+              setQuoteLoaded(false);
+              quoteLoadedRef.current = false;  // permite carregar denovo se usuário navegar
+              // Remove o quote_id da URL sem recarregar a página
+              const newUrl = window.location.pathname + (urlBranchId ? `?branch=${urlBranchId}` : '');
+              window.history.replaceState({}, '', newUrl);
+            }}
+          >
+            <XCircle className="h-3.5 w-3.5 mr-1" />
+            Descartar
+          </Button>
+        </div>
+      )}
+
       {/* ─── Top Bar ─── */}
       <div className="flex items-center gap-3 mb-3 flex-shrink-0">
         {/* Badge da Unidade */}
@@ -771,6 +957,58 @@ export default function PDVPage() {
         {/* ════════════ COLUNA DIREITA (5/12) — RESUMO + PAGAMENTO ════════════ */}
         <div className="lg:col-span-5 flex flex-col gap-3 overflow-y-auto pb-2">
 
+          {/* ─── BLOCO: VENDEDOR ─── */}
+          <Card className="flex-shrink-0">
+            <CardContent className="p-3">
+              <div className="flex items-center gap-2">
+                <BadgePercent className="h-4 w-4 text-muted-foreground shrink-0" />
+                <Popover open={showSellerPopover} onOpenChange={setShowSellerPopover}>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className="flex-1 justify-start text-sm h-9">
+                      <BadgePercent className="mr-2 h-4 w-4 shrink-0" />
+                      <span className="truncate">
+                        {selectedSeller
+                          ? sellers.find(s => s.id === selectedSeller)?.name || "Vendedor"
+                          : loadingSellers ? "Carregando..." : "Vendedor (opcional)"}
+                      </span>
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-56 p-0 z-[100]" align="start">
+                    <Command>
+                      <CommandInput placeholder="Buscar vendedor..." />
+                      <CommandList>
+                        {sellers.length === 0 ? (
+                          <div className="px-3 py-2 text-sm text-muted-foreground">
+                            Nenhum vendedor cadastrado
+                          </div>
+                        ) : (
+                          <CommandGroup>
+                            {sellers.map((seller) => (
+                              <CommandItem key={seller.id} onSelect={() => { setSelectedSeller(seller.id); setShowSellerPopover(false); }} className="cursor-pointer">
+                                {seller.name}
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        )}
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+                {selectedSeller && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-9 w-9 shrink-0 text-destructive"
+                    onClick={() => setSelectedSeller(null)}
+                    title="Remover vendedor"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
           {/* ─── BLOCO: CLIENTE ─── */}
           <Card className="flex-shrink-0">
             <CardContent className="p-3">
@@ -898,6 +1136,30 @@ export default function PDVPage() {
                     </Button>
                   </div>
                 ))}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* ─── BLOCO: AÇÕES DE PROPOSTA ─── */}
+          {!urlQuoteId && (
+            <Card className="flex-shrink-0 border-purple-200 dark:border-purple-900">
+              <CardContent className="p-3">
+                <p className="text-xs font-medium text-purple-600 dark:text-purple-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                  <FileText className="h-3.5 w-3.5" />
+                  Ações de Proposta
+                </p>
+                <Button
+                  variant="outline"
+                  className="w-full h-11 text-sm font-medium border-purple-300 dark:border-purple-700 text-purple-700 dark:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-950/50 hover:text-purple-800 dark:hover:text-purple-200 hover:border-purple-400 dark:hover:border-purple-600 rounded-xl transition-all"
+                  disabled={state.items.length === 0 || savingQuote}
+                  onClick={handleSaveQuote}
+                >
+                  {savingQuote ? (
+                    <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Salvando...</>
+                  ) : (
+                    <><FileText className="h-4 w-4 mr-2" /> Gerar Orçamento / Proposta</>
+                  )}
+                </Button>
               </CardContent>
             </Card>
           )}

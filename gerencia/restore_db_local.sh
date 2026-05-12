@@ -4,12 +4,12 @@
 CONTAINER_NAME="postgres-local"
 
 # --- CONFIGURAÇÕES DO BANCO ---
-DB_NAME="estoque-db"
+DB_NAME="eletrosil_db"
 DB_USER="zemarques"
 BACKUP_DIR="$(dirname "$0")/backups-eletrosil"
 
 # --- SELEÇÃO DO ARQUIVO ---
-echo "=== Restore Local do Banco de Dados ===" 5q*q$01Xh40b8u
+echo "=== Restore Local do Banco de Dados ==="
 echo ""
 
 # Lista os backups disponíveis
@@ -18,7 +18,7 @@ if [ ! -d "$BACKUP_DIR" ]; then
     exit 1
 fi
 
-BACKUPS=$(ls -t $BACKUP_DIR/backup_prod_${DB_NAME}_*.sql 2>/dev/null)
+BACKUPS=$(ls -t $BACKUP_DIR/backup_*.sql 2>/dev/null)
 
 if [ -z "$BACKUPS" ]; then
     echo "❌ ERRO: Nenhum arquivo de backup encontrado em $BACKUP_DIR"

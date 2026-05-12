@@ -27,6 +27,8 @@ export async function upsertUserAction(prevState: any, formData: FormData) {
     const rawRole = formData.get('role') as string || 'operator'
     const rawBranchId = formData.get('branchId') as string || ''
 
+    const rawCommissionRate = formData.get('commissionRate') as string
+    
     const rawData = {
         name: formData.get('name'),
         email: formData.get('email'),
@@ -34,6 +36,7 @@ export async function upsertUserAction(prevState: any, formData: FormData) {
         role: rawRole,
         // Admin Global não tem filial — força null
         branchId: rawRole === 'admin' ? '' : rawBranchId,
+        commissionRate: rawCommissionRate ? Number(rawCommissionRate) : undefined,
     }
 
     // Validate fields
@@ -62,6 +65,10 @@ export async function upsertUserAction(prevState: any, formData: FormData) {
             if (rawData.role !== 'admin' && rawData.branchId) {
                 payload.branchId = rawData.branchId
             }
+            // Envia commissionRate se for vendedor
+            if (rawData.role === 'vendedor' && rawData.commissionRate !== undefined) {
+                payload.commissionRate = rawData.commissionRate
+            }
             response = await api.post('/users', payload)
         } else {
             // UPDATE:
@@ -72,6 +79,10 @@ export async function upsertUserAction(prevState: any, formData: FormData) {
             payload.append('role', rawData.role as string)
             // Admin não tem filial; não-admin pode ter filial vazia (sem lotação ainda)
             payload.append('branchId', rawData.branchId)
+            
+            if (rawData.commissionRate !== undefined) {
+                payload.append('commissionRate', String(rawData.commissionRate))
+            }
 
             const avatar = formData.get('avatar') as File
             if (avatar && avatar.size > 0) {

@@ -10,6 +10,7 @@ from app.api.routers.users import router as users_router
 from app.api.routers.customers import router as customers_router
 from app.api.routers.cash_sessions import router as cash_sessions_router
 from app.api.routers.audit import router as audit_router
+from app.api.routers.quotes import router as quotes_router
 
 # Router principal que agrupa todos os endpoints.
 # ATENÇÃO: As rotas são montadas SEM o prefixo /api porque:
@@ -29,3 +30,4 @@ api_router.include_router(users_router)
 api_router.include_router(customers_router)
 api_router.include_router(cash_sessions_router)
 api_router.include_router(audit_router)
+api_router.include_router(quotes_router)

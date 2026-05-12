@@ -65,7 +65,7 @@ def get_branch(
     if not branch or branch.deleted_at is not None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Filial não encontrada",
+            detail="Unidade não encontrada",
         )
     return {"error": None, "data": _branch_to_dict(branch)}
 
@@ -90,7 +90,7 @@ def create_branch(
     if existing:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail=f"Já existe uma filial com o nome '{body.name}'.",
+            detail=f"Já existe uma unidade com o nome '{body.name}'.",
         )
 
     branch = Branch(
@@ -119,7 +119,7 @@ def update_branch(
     if not branch or branch.deleted_at is not None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Filial não encontrada",
+            detail="Unidade não encontrada",
         )
 
     # Atualiza apenas campos enviados
@@ -135,7 +135,7 @@ def update_branch(
         if existing:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
-                detail=f"Já existe outra filial com o nome '{body.name}'.",
+                detail=f"Já existe outra unidade com o nome '{body.name}'.",
             )
         branch.name = body.name
 
