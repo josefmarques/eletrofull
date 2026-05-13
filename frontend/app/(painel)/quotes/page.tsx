@@ -35,11 +35,12 @@ import {
     Loader2,
     Printer,
     ArrowRight,
-    Eye,
     User as UserIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import PrintDocument from "@/components/print-document";
+import type { PrintDocumentData } from "@/components/print-document";
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: any }> = {
     pendente: { label: "Pendente", color: "bg-amber-100 text-amber-700 border-amber-300 dark:bg-amber-950/30 dark:text-amber-400", icon: Clock },
@@ -48,90 +49,44 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; icon: any }>
 };
 
 function QuotePrintView({ quote, onClose }: { quote: QuoteData; onClose: () => void }) {
-    const subtotal = quote.items.reduce((acc, item) => acc + parseFloat(item.subtotal), 0);
-    const total = parseFloat(quote.totalValue);
-    const discount = parseFloat(quote.discount);
+    // Calcula validade em dias a partir da data de criação
+    let validityDays: number | undefined;
+    if (quote.createdAt && quote.expiresAt) {
+        const created = new Date(quote.createdAt);
+        const expires = new Date(quote.expiresAt);
+        const diffMs = expires.getTime() - created.getTime();
+        validityDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
+    }
+
+    const printData: PrintDocumentData = {
+        type: "quote",
+        id: quote.id,
+        branchName: undefined,
+        customerName: quote.customerName || undefined,
+        sellerName: quote.sellerName || undefined,
+        userName: quote.userName || undefined,
+        createdAt: quote.createdAt,
+        expiresAt: quote.expiresAt,
+        grossValue: quote.grossValue,
+        discount: quote.discount,
+        totalValue: quote.totalValue,
+        items: quote.items.map((item) => ({
+            quantity: item.quantity,
+            productName: item.productName || item.productId.substring(0, 8),
+            unitPrice: item.unitPrice,
+            subtotal: item.subtotal,
+        })),
+        observations: quote.observations,
+        validityDays,
+    };
 
     return (
-        <div className="fixed inset-0 z-50 bg-white print:bg-white overflow-auto">
-            <div className="print:hidden flex justify-between items-center p-4 bg-gray-100 border-b">
-                <h2 className="text-lg font-bold">Visualizar / Imprimir</h2>
-                <div className="flex gap-2">
-                    <Button variant="outline" onClick={() => window.print()}>
-                        <Printer className="h-4 w-4 mr-2" /> Imprimir
-                    </Button>
-                    <Button variant="secondary" onClick={onClose}>Fechar</Button>
-                </div>
-            </div>
-
-            <div className="max-w-[80mm] mx-auto p-4 font-mono text-xs leading-tight print:pt-0">
-                <div className="text-center mb-4">
-                    <p className="text-sm font-bold">{(process.env.NEXT_PUBLIC_COMPANY_NAME || "ELETROSIL").toUpperCase()}</p>
-                    <p className="text-[10px]">Sistema de Gestão</p>
-                    <p className="text-[10px]">ORÇAMENTO</p>
-                    <p>- - - - - - - - - - - - - - - -</p>
-                </div>
-
-                <div className="mb-3 space-y-0.5">
-                    <p>Nº: {quote.id.substring(0, 8).toUpperCase()}</p>
-                    <p>Data: {formatDateTimeBR(quote.createdAt || "")}</p>
-                    <p>Validade: {formatDateTimeBR(quote.expiresAt || "")}</p>
-                    {quote.sellerName && <p>Vendedor: {quote.sellerName}</p>}
-                    <p>Cliente: {quote.customerName || "Consumidor Final"}</p>
-                    {quote.observations && <p>Obs: {quote.observations}</p>}
-                </div>
-
-                <p className="text-center mb-1">- - - - - - - - - - - - - - - -</p>
-                <p className="text-center text-[10px] font-bold mb-1">ITENS</p>
-                <p className="text-center mb-1">- - - - - - - - - - - - - - - -</p>
-
-                <table className="w-full mb-2">
-                    <thead>
-                        <tr className="text-[10px]">
-                            <th className="text-left">ITEM</th>
-                            <th className="text-center">QTD</th>
-                            <th className="text-right">UNIT.</th>
-                            <th className="text-right">TOTAL</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {quote.items.map((item, idx) => (
-                            <tr key={idx}>
-                                <td className="text-left">{item.productName || item.productId.substring(0, 8)}</td>
-                                <td className="text-center">{item.quantity}</td>
-                                <td className="text-right">R$ {parseFloat(item.unitPrice).toFixed(2)}</td>
-                                <td className="text-right">R$ {parseFloat(item.subtotal).toFixed(2)}</td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-
-                <p className="text-center mb-1">- - - - - - - - - - - - - - - -</p>
-
-                <div className="space-y-0.5">
-                    <div className="flex justify-between">
-                        <span>Subtotal</span>
-                        <span>R$ {subtotal.toFixed(2)}</span>
-                    </div>
-                    {discount > 0 && (
-                        <div className="flex justify-between">
-                            <span>Desconto</span>
-                            <span>— R$ {discount.toFixed(2)}</span>
-                        </div>
-                    )}
-                    <div className="flex justify-between font-bold text-sm border-t pt-1">
-                        <span>TOTAL</span>
-                        <span>R$ {total.toFixed(2)}</span>
-                    </div>
-                </div>
-
-                <p className="text-center mb-1 mt-4">- - - - - - - - - - - - - - - -</p>
-                <div className="text-center text-[10px]">
-                    <p>Este orçamento é válido até {formatDateTimeBR(quote.expiresAt || "")}</p>
-                    <p className="mt-1">Obrigado pela preferência!</p>
-                </div>
-            </div>
-        </div>
+        <PrintDocument
+            data={printData}
+            modal
+            onClose={onClose}
+            onPrint={() => window.print()}
+        />
     );
 }
 
@@ -310,9 +265,9 @@ export default function QuotesPage() {
                                                     size="icon"
                                                     className="h-8 w-8"
                                                     onClick={() => setPrintQuote(quote)}
-                                                    title="Visualizar/Imprimir"
+                                                    title="Visualizar / Imprimir"
                                                 >
-                                                    <Eye className="h-4 w-4" />
+                                                    <Printer className="h-4 w-4" />
                                                 </Button>
                                                 {quote.status === "pendente" && !expired && (
                                                     <>

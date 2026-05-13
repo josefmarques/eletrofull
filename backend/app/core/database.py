@@ -231,4 +231,43 @@ def _run_migrations():
         else:
             print("[migration] ✅ quotes e quote_items já existem")
 
+        # ── Migração 10: Tabela financial_transactions ──
+        conn.execute(text(
+            "SELECT to_regclass('financial_transactions'::text);"
+        ))
+        result = conn.execute(text("""
+            SELECT EXISTS (
+                SELECT FROM information_schema.tables 
+                WHERE table_name = 'financial_transactions'
+            )
+        """))
+        if not result.fetchone()[0]:
+            conn.execute(text("""
+                CREATE TABLE financial_transactions (
+                    id UUID PRIMARY KEY,
+                    tenant_id VARCHAR NOT NULL DEFAULT 'eletrosil',
+                    branch_id UUID NOT NULL REFERENCES branches(id),
+                    description VARCHAR(255) NOT NULL,
+                    amount DECIMAL(12,2) NOT NULL,
+                    type VARCHAR NOT NULL,
+                    status VARCHAR NOT NULL DEFAULT 'pending',
+                    category VARCHAR(50) NOT NULL,
+                    due_date TIMESTAMP NOT NULL,
+                    payment_date TIMESTAMP,
+                    sale_id UUID REFERENCES sales(id),
+                    created_at TIMESTAMP DEFAULT NOW(),
+                    updated_at TIMESTAMP DEFAULT NOW()
+                );
+                CREATE INDEX idx_financial_tenant_id ON financial_transactions(tenant_id);
+                CREATE INDEX idx_financial_branch_id ON financial_transactions(branch_id);
+                CREATE INDEX idx_financial_status ON financial_transactions(status);
+                CREATE INDEX idx_financial_type ON financial_transactions(type);
+                CREATE INDEX idx_financial_due_date ON financial_transactions(due_date);
+                CREATE INDEX idx_financial_sale_id ON financial_transactions(sale_id);
+            """))
+            conn.commit()
+            print("[migration] ✅ Tabela financial_transactions criada")
+        else:
+            print("[migration] ✅ financial_transactions já existe")
+
         conn.close()

@@ -6,14 +6,15 @@ from typing import Optional, List
 from datetime import datetime
 from decimal import Decimal
 
-from app.core.database import get_session
+from app.core.database import get_session, settings
 from app.models.sales import Sale
 from app.models.sale_items import SaleItem
 from app.models.products import Product
 from app.models.stocks import Stock
 from app.models.customers import Customer
 from app.models.moves import Move
-from app.models.enums import MoveType, PaymentMethod
+from app.models.enums import MoveType, PaymentMethod, FinancialType, FinancialStatus
+from app.models.financial import FinancialTransaction
 from app.models.payments import Payment
 from app.models.cash_sessions import CashSession
 from app.models.quotes import Quote
@@ -21,6 +22,7 @@ from app.api.dependencies import get_current_user
 from app.models.users import User
 from app.models.audit import AuditAction
 from app.core.audit import log_audit
+from app.core.timezone import br_now_naive
 
 router = APIRouter(tags=["sales"])
 
@@ -60,6 +62,54 @@ def _calculate_commission(total_value: Decimal, seller: User) -> Decimal:
     if seller.commission_rate > 0:
         return total_value * Decimal(str(seller.commission_rate)) / Decimal("100")
     return Decimal("0")
+
+
+def _create_financial_transactions(
+    sale: Sale,
+    branch_id: UUID,
+    session: Session,
+):
+    """
+    Gera lançamentos financeiros automáticos ao finalizar uma venda.
+
+    1. REVENUE (Entrada): valor total da venda → categoria 'venda'.
+    2. EXPENSE (Saída): valor da comissão (se houver) → categoria 'comissao'.
+
+    Ambos vinculados ao sale_id para rastreabilidade.
+    A data de vencimento é a data da venda (à vista).
+    """
+    now = br_now_naive()
+    tenant_id = settings.company_name.lower() if settings.company_name else "eletrosil"
+
+    # ── 1. Receita (Entrada) — valor total da venda ──
+    revenue = FinancialTransaction(
+        tenant_id=tenant_id,
+        branch_id=branch_id,
+        description=f"Venda #{sale.receipt_number or 'N/A'} — Recebimento",
+        amount=sale.total_value,
+        type=FinancialType.REVENUE,
+        status=FinancialStatus.PAID,  # À vista: já nasce como pago
+        category="venda",
+        due_date=now,
+        payment_date=now,
+        sale_id=sale.id,
+    )
+    session.add(revenue)
+
+    # ── 2. Despesa (Saída) — comissão do vendedor (se houver) ──
+    if sale.commission_value and sale.commission_value > 0:
+        expense = FinancialTransaction(
+            tenant_id=tenant_id,
+            branch_id=branch_id,
+            description=f"Comissão venda #{sale.receipt_number or 'N/A'}",
+            amount=sale.commission_value,
+            type=FinancialType.EXPENSE,
+            status=FinancialStatus.PENDING,  # Comissão a pagar (pendente)
+            category="comissao",
+            due_date=now,
+            sale_id=sale.id,
+        )
+        session.add(expense)
 
 
 def _validate_cash_session_open(branch_id, db_session, current_user):
@@ -564,6 +614,9 @@ def create_sale(
         )
         session.add(payment)
 
+    # ── LANÇAMENTOS FINANCEIROS AUTOMÁTICOS ──
+    _create_financial_transactions(sale, branch_id, session)
+
     # ── Auditoria: NOVA_VENDA ──
     log_audit(
         session=session,
@@ -821,6 +874,9 @@ def pdv_checkout(
         amount=total_value,
     )
     session.add(payment)
+
+    # ── LANÇAMENTOS FINANCEIROS AUTOMÁTICOS ──
+    _create_financial_transactions(sale, branch_id, session)
 
     # ── Auditoria: NOVA_VENDA ──
     log_audit(

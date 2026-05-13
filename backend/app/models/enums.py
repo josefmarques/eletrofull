@@ -32,3 +32,16 @@ class MoveType(str, enum.Enum):
     """Tipo de movimentação de estoque."""
     IN = "in"       # Entrada
     OUT = "out"     # Saída
+
+
+class FinancialType(str, enum.Enum):
+    """Tipo de lançamento financeiro (Fluxo de Caixa)."""
+    REVENUE = "revenue"    # Entrada (Conta a Receber)
+    EXPENSE = "expense"    # Saída (Conta a Pagar)
+
+
+class FinancialStatus(str, enum.Enum):
+    """Status de um título financeiro."""
+    PENDING = "pending"   # Pendente (aguardando pagamento)
+    PAID = "paid"         # Pago / Baixado
+    CANCELED = "canceled" # Cancelado

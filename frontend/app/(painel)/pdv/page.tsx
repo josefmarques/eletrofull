@@ -597,85 +597,87 @@ export default function PDVPage() {
   if (saleDone) {
     return (
       <>
-        {/* ─── Cupom Térmico (oculto em tela, visível na impressão) ─── */}
-        <div className="hidden print:block p-4 max-w-[80mm] mx-auto font-mono text-xs leading-tight">
-          <div className="text-center mb-2">
-            <p className="text-sm font-bold">{(process.env.NEXT_PUBLIC_COMPANY_NAME || "ELETROSIL").toUpperCase()}</p>
-            <p className="text-[10px]">Sistema de Gestão</p>
-            <p>- - - - - - - - - - - - - - - -</p>
-          </div>
-          <div className="mb-2">
-            <p>CUPOM NÃO FISCAL</p>
-            <p>Nº {String(saleDone.receiptNumber || "").padStart(6, "0")}</p>
-            <p>Data: {formatDateTimeBR(new Date().toISOString())}</p>
-            <p>Operador: {saleDone.userName || "—"}</p>
-            {saleDone.sellerName && <p>Vendedor: {saleDone.sellerName}</p>}
-            <p>Cliente: {state.customer?.name || "Consumidor Final"}</p>
-            {state.customer?.cpfCnpj && <p>CPF/CNPJ: {state.customer.cpfCnpj}</p>}
-          </div>
-          <p className="text-center mb-1">- - - - - - - - - - - - - - - -</p>
-          <p className="text-center text-[10px] font-bold mb-1">DISCRIMINAÇÃO DOS ITENS</p>
-          <p className="text-center mb-1">- - - - - - - - - - - - - - - -</p>
-          <table className="w-full">
-            <thead>
-              <tr className="text-[10px]">
-                <th className="text-left">ITEM</th>
-                <th className="text-center">QTD</th>
-                <th className="text-right">VALOR</th>
-              </tr>
-            </thead>
-            <tbody>
-              {saleDone.items.map((item, idx) => (
-                <tr key={idx}>
-                  <td className="text-left">{item.productName}</td>
-                  <td className="text-center">{item.quantity}</td>
-                  <td className="text-right">R$ {Number(item.subtotal).toFixed(2)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <p className="text-center mb-1">- - - - - - - - - - - - - - - -</p>
-          <div className="space-y-1">
-            <div className="flex justify-between">
-              <span>Subtotal</span>
-              <span>R$ {subtotal.toFixed(2)}</span>
+        {/* ─── Print-only: Cupom Térmico ─── */}
+        <div className="print-report-container hidden">
+          <div className="p-4 max-w-[80mm] mx-auto font-mono text-xs leading-tight">
+            <div className="text-center mb-2">
+              <p className="text-sm font-bold">{(process.env.NEXT_PUBLIC_COMPANY_NAME || "ELETROSIL").toUpperCase()}</p>
+              <p className="text-[10px]">Sistema de Gestão</p>
+              <p>- - - - - - - - - - - - - - - -</p>
             </div>
-            {parseFloat(state.discount) > 0 && (
+            <div className="mb-2">
+              <p>CUPOM NÃO FISCAL</p>
+              <p>Nº {String(saleDone.receiptNumber || "").padStart(6, "0")}</p>
+              <p>Data: {formatDateTimeBR(new Date().toISOString())}</p>
+              <p>Operador: {saleDone.userName || "—"}</p>
+              {saleDone.sellerName && <p>Vendedor: {saleDone.sellerName}</p>}
+              <p>Cliente: {state.customer?.name || "Consumidor Final"}</p>
+              {state.customer?.cpfCnpj && <p>CPF/CNPJ: {state.customer.cpfCnpj}</p>}
+            </div>
+            <p className="text-center mb-1">- - - - - - - - - - - - - - - -</p>
+            <p className="text-center text-[10px] font-bold mb-1">DISCRIMINAÇÃO DOS ITENS</p>
+            <p className="text-center mb-1">- - - - - - - - - - - - - - - -</p>
+            <table className="w-full">
+              <thead>
+                <tr className="text-[10px]">
+                  <th className="text-left">ITEM</th>
+                  <th className="text-center">QTD</th>
+                  <th className="text-right">VALOR</th>
+                </tr>
+              </thead>
+              <tbody>
+                {saleDone.items.map((item, idx) => (
+                  <tr key={idx}>
+                    <td className="text-left">{item.productName}</td>
+                    <td className="text-center">{item.quantity}</td>
+                    <td className="text-right">R$ {Number(item.subtotal).toFixed(2)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <p className="text-center mb-1">- - - - - - - - - - - - - - - -</p>
+            <div className="space-y-1">
               <div className="flex justify-between">
-                <span>Desconto</span>
-                <span>— R$ {parseFloat(state.discount).toFixed(2)}</span>
+                <span>Subtotal</span>
+                <span>R$ {subtotal.toFixed(2)}</span>
+              </div>
+              {parseFloat(state.discount) > 0 && (
+                <div className="flex justify-between">
+                  <span>Desconto</span>
+                  <span>— R$ {parseFloat(state.discount).toFixed(2)}</span>
+                </div>
+              )}
+              <div className="flex justify-between font-bold text-sm border-t pt-1">
+                <span>TOTAL</span>
+                <span>R$ {saleDone.total.toFixed(2)}</span>
+              </div>
+            </div>
+            <p className="text-center mb-1 mt-2">- - - - - - - - - - - - - - - -</p>
+            <p className="text-center text-[10px] font-bold mb-1">FORMA DE PAGAMENTO</p>
+            <div className="space-y-1">
+              {saleDone.payments.map((p, idx) => (
+                <div key={idx} className="flex justify-between">
+                  <span>{METHOD_LABEL[p.method] || p.method}</span>
+                  <span>R$ {Number(p.amount).toFixed(2)}</span>
+                </div>
+              ))}
+            </div>
+            {change > 0 && (
+              <div className="flex justify-between font-bold">
+                <span>Troco</span>
+                <span>R$ {change.toFixed(2)}</span>
               </div>
             )}
-            <div className="flex justify-between font-bold text-sm border-t pt-1">
-              <span>TOTAL</span>
-              <span>R$ {saleDone.total.toFixed(2)}</span>
+            <p className="text-center mb-1">- - - - - - - - - - - - - - - -</p>
+            <div className="text-center text-[10px]">
+              <p>Obrigado pela preferência!</p>
+              <p className="mt-1">{process.env.NEXT_PUBLIC_COMPANY_NAME || "Eletrosil"} — Sistema de Gestão</p>
             </div>
-          </div>
-          <p className="text-center mb-1 mt-2">- - - - - - - - - - - - - - - -</p>
-          <p className="text-center text-[10px] font-bold mb-1">FORMA DE PAGAMENTO</p>
-          <div className="space-y-1">
-            {saleDone.payments.map((p, idx) => (
-              <div key={idx} className="flex justify-between">
-                <span>{METHOD_LABEL[p.method] || p.method}</span>
-                <span>R$ {Number(p.amount).toFixed(2)}</span>
-              </div>
-            ))}
-          </div>
-          {change > 0 && (
-            <div className="flex justify-between font-bold">
-              <span>Troco</span>
-              <span>R$ {change.toFixed(2)}</span>
-            </div>
-          )}
-          <p className="text-center mb-1">- - - - - - - - - - - - - - - -</p>
-          <div className="text-center text-[10px]">
-            <p>Obrigado pela preferência!</p>
-            <p className="mt-1">{process.env.NEXT_PUBLIC_COMPANY_NAME || "Eletrosil"} — Sistema de Gestão</p>
           </div>
         </div>
 
-        {/* ─── Tela de Sucesso (visível em tela) ─── */}
-        <div className="print:hidden h-[calc(100vh-80px)] flex items-center justify-center">
+        {/* ─── Tela de Sucesso (visível em tela, escondida no print) ─── */}
+        <div className="h-[calc(100vh-80px)] flex items-center justify-center">
           <Card className="w-full max-w-md text-center">
             <CardHeader>
               <div className="flex justify-center mb-2">

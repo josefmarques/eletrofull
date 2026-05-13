@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarSearch, Inbox, LayoutDashboard, Search, User as UserIcon, Receipt, DollarSign, Shield, Store, Building2, LogOut, Users, FileText } from "lucide-react"
+import { CalendarSearch, Inbox, LayoutDashboard, Search, User as UserIcon, Receipt, DollarSign, Shield, Store, Building2, LogOut, Users, FileText, Landmark } from "lucide-react"
 
 import {
   Sidebar,
@@ -43,6 +43,8 @@ const navItems = [
   { href: "/pdv", label: "PDV", icon: CalendarSearch, roles: ["admin", "manager", "operator", "vendedor"] },
   { href: "/quotes", label: "Orçamentos", icon: FileText, roles: ["admin", "manager", "vendedor"] },
   { href: "/sales", label: "Histórico", icon: Receipt, roles: ["admin", "manager", "operator", "vendedor"] },
+  { group: "Financeiro" },
+  { href: "/finance", label: "Fluxo de Caixa", icon: Landmark, roles: ["admin", "manager"] },
 ]
 
 export function AppSidebar({ branches = [] }: Props) {
@@ -58,7 +60,7 @@ export function AppSidebar({ branches = [] }: Props) {
   )?.name : undefined
 
   const isActive = (href: string) =>
-    href === "/sales" ? pathname.startsWith(href) : pathname === href
+    href === "/sales" || href === "/finance" ? pathname.startsWith(href) : pathname === href
 
   // ── Segurança: se não há usuário, não renderiza nada ──
   if (!user) return null

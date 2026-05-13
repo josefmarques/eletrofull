@@ -21,7 +21,9 @@ export function proxy(request: NextRequest) {
   // 2. Proteção de rotas privadas - apenas redirecione se NÃO tiver token
   const isPrivatePage = pathname.startsWith('/dashboard') || 
                         pathname.startsWith('/pdv') || 
-                        pathname.startsWith('/products')
+                        pathname.startsWith('/products') ||
+                        pathname.startsWith('/finance') ||
+                        pathname.startsWith('/sales')
 
   if (!token && isPrivatePage) {
     console.log('[Proxy] No token, redirecting to /login');
@@ -39,5 +41,5 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/dashboard/:path*', '/pdv/:path*', '/products/:path*', '/login'],
+  matcher: ['/dashboard/:path*', '/pdv/:path*', '/products/:path*', '/finance/:path*', '/sales/:path*', '/login'],
 }

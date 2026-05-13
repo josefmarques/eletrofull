@@ -9,7 +9,7 @@ import { PageTitle } from "@/components/page-title";
 import { saleService } from "@/services/sale";
 import { branchClientService } from "@/services/branch-client";
 import { Badge } from "@/components/ui/badge";
-import { Search, Filter, ArrowUpDown, Eye } from "lucide-react";
+import { Search, Filter, ArrowUpDown, Eye, Printer } from "lucide-react";
 import Link from "next/link";
 
 export default function SalesPage() {
@@ -158,11 +158,18 @@ export default function SalesPage() {
                                         </Badge>
                                         </TableCell>
                                         <TableCell className="text-center">
-                                            <Link href={`/sales/${sale.id}`}>
-                                                <Button variant="ghost" size="icon">
-                                                    <Eye className="h-4 w-4" />
-                                                </Button>
-                                            </Link>
+                                            <div className="flex items-center justify-center gap-1">
+                                                <Link href={`/sales/${sale.id}`}>
+                                                    <Button variant="ghost" size="icon" title="Detalhes">
+                                                        <Eye className="h-4 w-4" />
+                                                    </Button>
+                                                </Link>
+                                                <Link href={`/sales/${sale.id}/print`}>
+                                                    <Button variant="ghost" size="icon" title="Imprimir Recibo">
+                                                        <Printer className="h-4 w-4" />
+                                                    </Button>
+                                                </Link>
+                                            </div>
                                         </TableCell>
                                     </TableRow>
                                 ))}
